@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mercedes-Benz Talent Selection Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #1a1a2e 100%);
+            min-height: 100vh;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glass-strong {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .glass-input {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+        }
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
+        }
+        .star-btn {
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .star-btn:hover { transform: scale(1.2); }
+        .star-btn.active { color: #fbbf24; text-shadow: 0 0 12px rgba(251, 191, 36, 0.5); }
+        .star-btn.inactive { color: rgba(255, 255, 255, 0.2); }
+        .mercedes-gradient {
+            background: linear-gradient(135deg, #c0c0c0, #e8e8e8, #c0c0c0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .badge-selected {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+        .badge-rank {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+        }
+        .top-10 {
+            border-left: 3px solid #10b981;
+        }
+        .progress-bar {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+            transition: width 0.5s ease;
+        }
+        .tab-active {
+            background: rgba(255, 255, 255, 0.15);
+            border-bottom: 2px solid #fff;
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+            animation: shimmer 3s infinite;
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .mercedes-star {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            position: relative;
+        }
+        .mercedes-star::before {
+            content: '★';
+            font-size: 40px;
+            background: linear-gradient(135deg, #c0c0c0, #ffffff, #c0c0c0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+        }
+        @media print {
+            body { background: #fff !important; color: #000 !important; }
+            .glass, .glass-strong, .glass-card { background: #fff !important; border-color: #ddd !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen">
+
+    <!-- Ambient background blobs -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
+        <div class="absolute top-1/3 -left-20 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-20 right-1/4 w-72 h-72 bg-teal-600/8 rounded-full blur-3xl"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="relative z-10 glass-strong border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-6 py-5">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <!-- Mercedes Logo -->
+                    <div class="w-14 h-14 flex items-center justify-center">
+                        <img src="mercedes-logo.svg" alt="Mercedes-Benz" class="w-14 h-14">
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold mercedes-gradient">Mercedes-Benz Manufacturing Thailand</h1>
+                        <p class="text-sm text-white/50 tracking-wider uppercase">Talent Selection Panel 2026</p>
+                    </div>
+                </div>
+                <div class="text-right hidden sm:block">
+                    <p class="text-2xl font-semibold text-white/70">Pathways to Success</p>
+                    <p class="text-base text-white/40">Training Week &middot; 8-12 June 2026</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Jury Member Bar -->
+    <div class="relative z-10 glass border-b border-white/5 no-print">
+        <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-sm text-white/40">Jury Member:</span>
+                <select id="jury-select" onchange="switchJury()" class="glass-input rounded-lg px-4 py-2 text-sm text-white outline-none min-w-[200px]">
+                    <option value="">Select your name...</option>
+                </select>
+                <button onclick="openJuryModal()" class="glass px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-all">+ Add Jury Member</button>
+                <button onclick="removeJuryMember()" class="glass px-3 py-2 rounded-lg text-sm hover:bg-red-500/20 hover:text-red-300 transition-all text-white/40">&times; Remove</button>
+            </div>
+            <div id="jury-status" class="text-sm text-white/30"></div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="relative z-10 glass border-b border-white/5 no-print">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="flex gap-1">
+                <button onclick="showTab('candidates')" id="tab-candidates" class="tab-active px-6 py-4 text-base font-medium rounded-t-lg transition-all hover:bg-white/10">
+                    <span class="mr-2">&#9679;</span>Candidates
+                </button>
+                <button onclick="showTab('evaluate')" id="tab-evaluate" class="px-6 py-4 text-base font-medium rounded-t-lg transition-all hover:bg-white/10 text-white/60">
+                    <span class="mr-2">&#9733;</span>Evaluate
+                </button>
+                <button onclick="showTab('ranking')" id="tab-ranking" class="px-6 py-4 text-base font-medium rounded-t-lg transition-all hover:bg-white/10 text-white/60">
+                    <span class="mr-2">&#9650;</span>Ranking & Selection
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="relative z-10 max-w-7xl mx-auto px-6 py-8">
+
+        <!-- ========== CANDIDATES TAB ========== -->
+        <div id="panel-candidates" class="fade-in">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+                <div>
+                    <h2 class="text-4xl font-bold">Candidate Pool</h2>
+                    <p class="text-white/50 text-base mt-2">Add Mercedes-Benz employees who applied for the programme</p>
+                </div>
+                <button onclick="openAddModal()" class="glass-strong px-6 py-3 rounded-xl text-base font-semibold hover:bg-white/20 transition-all flex items-center gap-2">
+                    <span class="text-xl leading-none">+</span> Add Candidate
+                </button>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-5 mb-10">
+                <div class="glass-card rounded-2xl p-6">
+                    <p class="text-white/40 text-sm uppercase tracking-wider">Total Applicants</p>
+                    <p id="stat-total" class="text-5xl font-bold mt-2">0</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6">
+                    <p class="text-white/40 text-sm uppercase tracking-wider">Evaluated</p>
+                    <p id="stat-evaluated" class="text-5xl font-bold mt-2 text-blue-400">0</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6">
+                    <p class="text-white/40 text-sm uppercase tracking-wider">Spots Available</p>
+                    <p class="text-5xl font-bold mt-2 text-emerald-400">10</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6">
+                    <p class="text-white/40 text-sm uppercase tracking-wider">Avg. Score</p>
+                    <p id="stat-avg" class="text-5xl font-bold mt-2 text-amber-400">-</p>
+                </div>
+            </div>
+
+            <!-- Candidates Grid -->
+            <div id="candidates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Filled by JS -->
+            </div>
+            <div id="empty-state" class="text-center py-20">
+                <div class="text-7xl mb-4 opacity-20">&#9734;</div>
+                <p class="text-white/30 text-xl">No candidates added yet</p>
+                <p class="text-white/20 text-base mt-2">Click "Add Candidate" to get started</p>
+            </div>
+        </div>
+
+        <!-- ========== EVALUATE TAB ========== -->
+        <div id="panel-evaluate" class="hidden fade-in">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+                <div>
+                    <h2 class="text-4xl font-bold">Evaluate Candidates</h2>
+                    <p class="text-white/50 text-base mt-2">Rate each criterion from 1 (low) to 5 (excellent)</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="text-white/50 text-base">Candidate:</label>
+                    <select id="eval-select" onchange="loadEvaluation()" class="glass-input rounded-xl px-5 py-4 text-base text-white outline-none min-w-[300px]">
+                        <option value="">Select a candidate...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="eval-form" class="hidden">
+                <!-- Top Navigation -->
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="navigateCandidate(-1)" class="glass px-6 py-3 rounded-xl text-base hover:bg-white/10 transition-all">
+                        &larr; Previous
+                    </button>
+                    <span id="eval-progress-top" class="text-white/40 text-base"></span>
+                    <button onclick="navigateCandidate(1)" class="glass px-6 py-3 rounded-xl text-base hover:bg-white/10 transition-all">
+                        Next &rarr;
+                    </button>
+                </div>
+
+                <!-- Candidate Header -->
+                <div class="glass-strong rounded-2xl p-8 mb-8 flex items-center gap-6">
+                    <div id="eval-avatar" class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-3xl font-bold shrink-0"></div>
+                    <div class="flex-1">
+                        <h3 id="eval-name" class="text-2xl font-bold"></h3>
+                        <p id="eval-role" class="text-white/50 text-base mt-1"></p>
+                        <p id="eval-dept" class="text-white/40 text-sm mt-0.5"></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-white/40 text-sm uppercase tracking-wider">Overall Score</p>
+                        <p id="eval-overall" class="text-5xl font-bold mercedes-gradient">-</p>
+                    </div>
+                </div>
+
+                <!-- Criteria Cards -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6" id="criteria-container">
+                    <!-- Filled by JS -->
+                </div>
+
+                <!-- General Comments -->
+                <div class="glass-card rounded-2xl p-6 mb-8">
+                    <label class="text-base font-semibold text-white/70 block mb-3">General Comments & Recommendation</label>
+                    <textarea id="eval-general-comment" onchange="saveCurrentEvaluation()"
+                        class="glass-input rounded-xl w-full p-4 text-base text-white outline-none resize-none h-32"
+                        placeholder="Overall impression, strengths, concerns, recommendation..."></textarea>
+                </div>
+
+                <!-- Navigation -->
+                <div class="flex justify-between items-center">
+                    <button onclick="navigateCandidate(-1)" class="glass px-6 py-3 rounded-xl text-base hover:bg-white/10 transition-all">
+                        &larr; Previous
+                    </button>
+                    <span id="eval-progress" class="text-white/40 text-base"></span>
+                    <button onclick="navigateCandidate(1)" class="glass px-6 py-3 rounded-xl text-base hover:bg-white/10 transition-all">
+                        Next &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <div id="eval-empty" class="text-center py-20">
+                <div class="text-7xl mb-4 opacity-20">&#9733;</div>
+                <p class="text-white/30 text-xl">Select a candidate to begin evaluation</p>
+            </div>
+        </div>
+
+        <!-- ========== RANKING TAB ========== -->
+        <div id="panel-ranking" class="hidden fade-in">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+                <div>
+                    <h2 class="text-4xl font-bold">Ranking & Final Selection</h2>
+                    <p class="text-white/50 text-base mt-2">Top 10 candidates are automatically highlighted</p>
+                </div>
+                <div class="flex gap-3 no-print">
+                    <button onclick="exportResults()" class="glass px-5 py-3 rounded-xl text-base hover:bg-white/10 transition-all flex items-center gap-2">
+                        &#8681; Export CSV
+                    </button>
+                    <button onclick="window.print()" class="glass-strong px-5 py-3 rounded-xl text-base hover:bg-white/20 transition-all flex items-center gap-2">
+                        &#9113; Print
+                    </button>
+                </div>
+            </div>
+
+            <div id="ranking-list">
+                <!-- Filled by JS -->
+            </div>
+
+            <div id="ranking-empty" class="text-center py-20">
+                <div class="text-7xl mb-4 opacity-20">&#9650;</div>
+                <p class="text-white/30 text-xl">No evaluations completed yet</p>
+                <p class="text-white/20 text-base mt-2">Evaluate candidates first to see rankings</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Add Candidate Modal -->
+    <div id="add-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="modal-overlay absolute inset-0" onclick="closeAddModal()"></div>
+        <div class="glass-strong rounded-3xl p-8 max-w-lg w-full relative z-10 fade-in">
+            <h3 class="text-2xl font-bold mb-6">Add New Candidate</h3>
+            <div class="space-y-5">
+                <div>
+                    <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Full Name *</label>
+                    <input id="input-name" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Somchai Rittikorn">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Position / Role *</label>
+                        <input id="input-role" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Senior Engineer">
+                    </div>
+                    <div>
+                        <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Department *</label>
+                        <input id="input-dept" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. R&D">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Years at MB</label>
+                        <input id="input-years" type="number" min="0" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. 5">
+                    </div>
+                    <div>
+                        <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Email</label>
+                        <input id="input-email" type="email" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="name@mercedes-benz.com">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-8">
+                <button onclick="closeAddModal()" class="px-6 py-3 rounded-xl text-base text-white/60 hover:text-white transition-all">Cancel</button>
+                <button onclick="addCandidate()" class="bg-white/15 hover:bg-white/25 px-7 py-3 rounded-xl text-base font-semibold transition-all">Add Candidate</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Jury Member Modal -->
+    <div id="jury-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="modal-overlay absolute inset-0" onclick="closeJuryModal()"></div>
+        <div class="glass-strong rounded-3xl p-8 max-w-md w-full relative z-10 fade-in">
+            <h3 class="text-2xl font-bold mb-6">Add Jury Member</h3>
+            <div class="space-y-5">
+                <div>
+                    <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Full Name *</label>
+                    <input id="input-jury-name" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Dr. Somchai">
+                </div>
+                <div>
+                    <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Role / Title</label>
+                    <input id="input-jury-role" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. VP Human Resources">
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-8">
+                <button onclick="closeJuryModal()" class="px-6 py-3 rounded-xl text-base text-white/60 hover:text-white transition-all">Cancel</button>
+                <button onclick="addJuryMember()" class="bg-white/15 hover:bg-white/25 px-7 py-3 rounded-xl text-base font-semibold transition-all">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="relative z-10 border-t border-white/5 mt-16 no-print">
+        <div class="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p class="text-white/30 text-sm">Mercedes-Benz Manufacturing Thailand &middot; Talent Development Training & Networking Week 2026</p>
+            <p class="text-white/20 text-sm">Mark Berger &middot; CEO of Mercedes-Benz Manufacturing Thailand</p>
+        </div>
+    </footer>
+
+<script>
+// ==================== DATA ====================
+
+const CRITERIA = [
+    { id: 'strategic_leadership', name: 'Strategic Thinking & Leadership Potential', desc: 'Ability to think beyond day-to-day tasks, sees the bigger picture. Shows initiative, guides others, takes ownership of outcomes' },
+    { id: 'intercultural_collab', name: 'Intercultural Competence & Team Collaboration', desc: 'Experience & openness working with German/international colleagues. Effectiveness in cross-functional teams, willingness to share knowledge' },
+    { id: 'innovation_ai', name: 'Innovation, Curiosity & Usage of AI', desc: 'Interest in digitalisation, AI, sustainability, new ways of working. Effective and creative use of AI tools in preparing and delivering the pitch' },
+    { id: 'communication', name: 'Communication Skills', desc: 'Clear articulation in English, active listening, presentation skills' },
+    { id: 'motivation', name: 'Motivation & Commitment', desc: 'Genuine interest in the programme, willingness to invest time and effort', fullWidth: true },
+];
+
+let candidates = JSON.parse(localStorage.getItem('mb_candidates') || '[]');
+// evaluations structure: { juryId: { candidateId: { criterion_rating: N, criterion_comment: '', general_comment: '' } } }
+let evaluations = JSON.parse(localStorage.getItem('mb_evaluations_v2') || '{}');
+let juryMembers = JSON.parse(localStorage.getItem('mb_jury') || '[]');
+let activeJuryId = localStorage.getItem('mb_active_jury') || '';
+
+function save() {
+    localStorage.setItem('mb_candidates', JSON.stringify(candidates));
+    localStorage.setItem('mb_evaluations_v2', JSON.stringify(evaluations));
+    localStorage.setItem('mb_jury', JSON.stringify(juryMembers));
+    localStorage.setItem('mb_active_jury', activeJuryId);
+}
+
+// ==================== JURY MEMBERS ====================
+
+function populateJurySelect() {
+    const sel = document.getElementById('jury-select');
+    sel.innerHTML = '<option value="">Select your name...</option>' +
+        juryMembers.map(j => `<option value="${j.id}">${j.name}${j.role ? ' — ' + j.role : ''}</option>`).join('');
+    if (activeJuryId && juryMembers.find(j => j.id === activeJuryId)) {
+        sel.value = activeJuryId;
+    }
+    updateJuryStatus();
+}
+
+function switchJury() {
+    activeJuryId = document.getElementById('jury-select').value;
+    save();
+    updateJuryStatus();
+    // Reload current eval if on evaluate tab
+    if (!document.getElementById('panel-evaluate').classList.contains('hidden')) {
+        loadEvaluation();
+    }
+    if (!document.getElementById('panel-candidates').classList.contains('hidden')) {
+        renderCandidates();
+    }
+}
+
+function updateJuryStatus() {
+    const status = document.getElementById('jury-status');
+    if (activeJuryId) {
+        const j = juryMembers.find(x => x.id === activeJuryId);
+        const evalCount = candidates.filter(c => {
+            const ev = evaluations[activeJuryId] && evaluations[activeJuryId][c.id];
+            return ev && calcOverall(ev) !== null;
+        }).length;
+        status.textContent = `${evalCount} of ${candidates.length} candidates evaluated`;
+    } else {
+        status.textContent = juryMembers.length > 0 ? 'Please select your name' : 'Add jury members to get started';
+    }
+}
+
+function openJuryModal() {
+    document.getElementById('jury-modal').classList.remove('hidden');
+    document.getElementById('jury-modal').classList.add('flex');
+    document.getElementById('input-jury-name').focus();
+}
+
+function closeJuryModal() {
+    document.getElementById('jury-modal').classList.add('hidden');
+    document.getElementById('jury-modal').classList.remove('flex');
+    document.getElementById('input-jury-name').value = '';
+    document.getElementById('input-jury-role').value = '';
+}
+
+function addJuryMember() {
+    const name = document.getElementById('input-jury-name').value.trim();
+    const role = document.getElementById('input-jury-role').value.trim();
+    if (!name) { alert('Please enter a name.'); return; }
+
+    const id = 'j_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    juryMembers.push({ id, name, role: role || null });
+    activeJuryId = id;
+    evaluations[id] = {};
+    save();
+    closeJuryModal();
+    populateJurySelect();
+}
+
+function removeJuryMember() {
+    if (!activeJuryId) { alert('Please select a jury member first.'); return; }
+    const j = juryMembers.find(x => x.id === activeJuryId);
+    if (!confirm(`Remove jury member "${j.name}" and all their evaluations?`)) return;
+    delete evaluations[activeJuryId];
+    juryMembers = juryMembers.filter(x => x.id !== activeJuryId);
+    activeJuryId = '';
+    save();
+    populateJurySelect();
+    renderCandidates();
+}
+
+// ==================== TABS ====================
+
+function showTab(tab) {
+    ['candidates', 'evaluate', 'ranking'].forEach(t => {
+        document.getElementById('panel-' + t).classList.toggle('hidden', t !== tab);
+        const tabBtn = document.getElementById('tab-' + t);
+        tabBtn.classList.toggle('tab-active', t === tab);
+        tabBtn.classList.toggle('text-white/60', t !== tab);
+    });
+    if (tab === 'candidates') renderCandidates();
+    if (tab === 'evaluate') populateEvalSelect();
+    if (tab === 'ranking') renderRanking();
+}
+
+// ==================== CANDIDATES ====================
+
+function getInitials(name) {
+    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+const AVATAR_COLORS = [
+    'from-blue-500 to-indigo-600',
+    'from-emerald-500 to-teal-600',
+    'from-violet-500 to-purple-600',
+    'from-rose-500 to-pink-600',
+    'from-amber-500 to-orange-600',
+    'from-cyan-500 to-blue-600',
+    'from-fuchsia-500 to-pink-600',
+    'from-lime-500 to-emerald-600',
+    'from-sky-500 to-indigo-600',
+    'from-red-500 to-rose-600',
+];
+
+// Get combined average score for a candidate across all jury members
+function getCombinedScore(candidateId) {
+    const scores = [];
+    juryMembers.forEach(j => {
+        const ev = evaluations[j.id] && evaluations[j.id][candidateId];
+        const s = calcOverall(ev);
+        if (s !== null) scores.push(s);
+    });
+    if (scores.length === 0) return null;
+    return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+
+// Get combined average per criterion across all jury members
+function getCombinedCriterionScore(candidateId, criterionId) {
+    const ratings = [];
+    juryMembers.forEach(j => {
+        const ev = evaluations[j.id] && evaluations[j.id][candidateId];
+        if (ev && ev[criterionId + '_rating']) ratings.push(ev[criterionId + '_rating']);
+    });
+    if (ratings.length === 0) return 0;
+    return ratings.reduce((a, b) => a + b, 0) / ratings.length;
+}
+
+// How many jury members have evaluated this candidate
+function getJuryEvalCount(candidateId) {
+    let count = 0;
+    juryMembers.forEach(j => {
+        const ev = evaluations[j.id] && evaluations[j.id][candidateId];
+        if (ev && calcOverall(ev) !== null) count++;
+    });
+    return count;
+}
+
+function renderCandidates() {
+    const grid = document.getElementById('candidates-grid');
+    const empty = document.getElementById('empty-state');
+
+    if (candidates.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        updateStats();
+        return;
+    }
+
+    empty.classList.add('hidden');
+    grid.innerHTML = candidates.map((c, i) => {
+        const combinedScore = getCombinedScore(c.id);
+        const juryCount = getJuryEvalCount(c.id);
+        const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+
+        return `
+        <div class="glass-card rounded-2xl p-6 fade-in">
+            <div class="flex items-start justify-between mb-5">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center text-lg font-bold shrink-0">
+                        ${getInitials(c.name)}
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-lg">${c.name}</h4>
+                        <p class="text-white/40 text-sm">${c.role}</p>
+                    </div>
+                </div>
+                <button onclick="removeCandidate(${i})" class="text-white/20 hover:text-red-400 transition-colors text-xl leading-none" title="Remove">&times;</button>
+            </div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-sm text-white/30">${c.department}</span>
+                    ${c.years ? `<span class="text-sm text-white/20">&middot; ${c.years}y</span>` : ''}
+                </div>
+                <div class="flex items-center gap-2">
+                    ${juryCount > 0
+                        ? `<span class="text-xs px-2 py-1 rounded-md bg-white/5 text-white/30">${juryCount}/${juryMembers.length} jury</span>`
+                        : ''
+                    }
+                    ${combinedScore !== null
+                        ? `<span class="text-sm font-semibold px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-300">${combinedScore.toFixed(1)} / 5.0</span>`
+                        : `<span class="text-sm px-3 py-1.5 rounded-lg bg-white/5 text-white/30">Not rated</span>`
+                    }
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+
+    updateStats();
+}
+
+function updateStats() {
+    document.getElementById('stat-total').textContent = candidates.length;
+    const evalCount = candidates.filter(c => getCombinedScore(c.id) !== null).length;
+    document.getElementById('stat-evaluated').textContent = evalCount;
+
+    if (evalCount > 0) {
+        const totalScore = candidates.reduce((sum, c) => {
+            const s = getCombinedScore(c.id);
+            return s !== null ? sum + s : sum;
+        }, 0);
+        document.getElementById('stat-avg').textContent = (totalScore / evalCount).toFixed(1);
+    } else {
+        document.getElementById('stat-avg').textContent = '-';
+    }
+}
+
+function openAddModal() {
+    document.getElementById('add-modal').classList.remove('hidden');
+    document.getElementById('add-modal').classList.add('flex');
+    document.getElementById('input-name').focus();
+}
+
+function closeAddModal() {
+    document.getElementById('add-modal').classList.add('hidden');
+    document.getElementById('add-modal').classList.remove('flex');
+    ['input-name', 'input-role', 'input-dept', 'input-years', 'input-email'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+}
+
+function addCandidate() {
+    const name = document.getElementById('input-name').value.trim();
+    const role = document.getElementById('input-role').value.trim();
+    const dept = document.getElementById('input-dept').value.trim();
+    const years = document.getElementById('input-years').value;
+    const email = document.getElementById('input-email').value.trim();
+
+    if (!name || !role || !dept) {
+        alert('Please fill in Name, Role, and Department.');
+        return;
+    }
+
+    candidates.push({
+        id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        name, role, department: dept,
+        years: years || null,
+        email: email || null,
+    });
+
+    save();
+    closeAddModal();
+    renderCandidates();
+}
+
+function removeCandidate(index) {
+    if (!confirm(`Remove "${candidates[index].name}" from the candidate pool?`)) return;
+    const id = candidates[index].id;
+    candidates.splice(index, 1);
+    // Remove from all jury evaluations
+    juryMembers.forEach(j => {
+        if (evaluations[j.id]) delete evaluations[j.id][id];
+    });
+    save();
+    renderCandidates();
+}
+
+// ==================== EVALUATION ====================
+
+function getActiveEval(candidateId) {
+    if (!activeJuryId) return {};
+    if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
+    return evaluations[activeJuryId][candidateId] || {};
+}
+
+function populateEvalSelect() {
+    const sel = document.getElementById('eval-select');
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">Select a candidate...</option>' +
+        candidates.map(c => `<option value="${c.id}">${c.name} — ${c.role}</option>`).join('');
+    if (currentVal && candidates.find(c => c.id === currentVal)) {
+        sel.value = currentVal;
+    }
+}
+
+function loadEvaluation() {
+    const cid = document.getElementById('eval-select').value;
+    if (!cid) {
+        document.getElementById('eval-form').classList.add('hidden');
+        document.getElementById('eval-empty').classList.remove('hidden');
+        return;
+    }
+
+    if (!activeJuryId) {
+        alert('Please select your jury member name first.');
+        document.getElementById('eval-select').value = '';
+        return;
+    }
+
+    document.getElementById('eval-form').classList.remove('hidden');
+    document.getElementById('eval-empty').classList.add('hidden');
+
+    const c = candidates.find(x => x.id === cid);
+    const idx = candidates.indexOf(c);
+    const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+
+    document.getElementById('eval-avatar').className = `w-20 h-20 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center text-3xl font-bold shrink-0`;
+    document.getElementById('eval-avatar').textContent = getInitials(c.name);
+    document.getElementById('eval-name').textContent = c.name;
+    document.getElementById('eval-role').textContent = c.role + (c.years ? ` · ${c.years} years` : '');
+    document.getElementById('eval-dept').textContent = c.department + (c.email ? ` · ${c.email}` : '');
+
+    const ev = getActiveEval(cid);
+    const juryName = juryMembers.find(j => j.id === activeJuryId)?.name || '';
+
+    // Progress
+    const progressText = `Candidate ${idx + 1} of ${candidates.length} · Evaluating as ${juryName}`;
+    document.getElementById('eval-progress').textContent = progressText;
+    document.getElementById('eval-progress-top').textContent = progressText;
+
+    // Render criteria
+    const container = document.getElementById('criteria-container');
+    container.innerHTML = CRITERIA.map(cr => {
+        const rating = ev[cr.id + '_rating'] || 0;
+        const comment = ev[cr.id + '_comment'] || '';
+
+        return `
+        <div class="glass-card rounded-2xl p-6 ${cr.fullWidth ? 'lg:col-span-2' : ''}">
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <h4 class="font-semibold text-lg">${cr.name}</h4>
+                    <p class="text-white/40 text-sm mt-1">${cr.desc}</p>
+                </div>
+                <div class="text-right shrink-0 ml-3">
+                    <span class="text-sm text-white/30" id="score-label-${cr.id}">${rating ? rating + '/5' : ''}</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 mb-4" id="stars-${cr.id}">
+                ${[1,2,3,4,5].map(s => `
+                    <button type="button" onclick="setRating('${cr.id}', ${s})"
+                        class="star-btn text-3xl ${s <= rating ? 'active' : 'inactive'}">&#9733;</button>
+                `).join('')}
+            </div>
+            <textarea onchange="setComment('${cr.id}', this.value)"
+                class="glass-input rounded-lg w-full p-4 text-sm text-white outline-none resize-none h-20"
+                placeholder="Comment on ${cr.name.toLowerCase()}...">${comment}</textarea>
+        </div>`;
+    }).join('');
+
+    document.getElementById('eval-general-comment').value = ev.general_comment || '';
+
+    updateOverallDisplay();
+}
+
+function setRating(criterionId, score) {
+    const cid = document.getElementById('eval-select').value;
+    if (!cid || !activeJuryId) return;
+
+    if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
+    if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
+    evaluations[activeJuryId][cid][criterionId + '_rating'] = score;
+    save();
+
+    // Update stars
+    const container = document.getElementById('stars-' + criterionId);
+    container.querySelectorAll('.star-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i < score);
+        btn.classList.toggle('inactive', i >= score);
+    });
+
+    // Update score label
+    document.getElementById('score-label-' + criterionId).textContent = score + '/5';
+
+    updateOverallDisplay();
+    updateJuryStatus();
+}
+
+function setComment(criterionId, value) {
+    const cid = document.getElementById('eval-select').value;
+    if (!cid || !activeJuryId) return;
+    if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
+    if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
+    evaluations[activeJuryId][cid][criterionId + '_comment'] = value;
+    save();
+}
+
+function saveCurrentEvaluation() {
+    const cid = document.getElementById('eval-select').value;
+    if (!cid || !activeJuryId) return;
+    if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
+    if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
+    evaluations[activeJuryId][cid].general_comment = document.getElementById('eval-general-comment').value;
+    save();
+}
+
+function calcOverall(ev) {
+    if (!ev) return null;
+    const ratings = CRITERIA.map(cr => ev[cr.id + '_rating'] || 0).filter(r => r > 0);
+    if (ratings.length === 0) return null;
+    return ratings.reduce((a, b) => a + b, 0) / ratings.length;
+}
+
+function updateOverallDisplay() {
+    const cid = document.getElementById('eval-select').value;
+    if (!activeJuryId) { document.getElementById('eval-overall').textContent = '-'; return; }
+    const ev = evaluations[activeJuryId] && evaluations[activeJuryId][cid];
+    const score = calcOverall(ev);
+    document.getElementById('eval-overall').textContent = score !== null ? score.toFixed(1) : '-';
+}
+
+function navigateCandidate(dir) {
+    const sel = document.getElementById('eval-select');
+    const currentIdx = candidates.findIndex(c => c.id === sel.value);
+    let newIdx = currentIdx + dir;
+    if (newIdx < 0) newIdx = candidates.length - 1;
+    if (newIdx >= candidates.length) newIdx = 0;
+    sel.value = candidates[newIdx].id;
+    loadEvaluation();
+}
+
+// ==================== RANKING ====================
+
+function renderRanking() {
+    const list = document.getElementById('ranking-list');
+    const empty = document.getElementById('ranking-empty');
+
+    const ranked = candidates
+        .map(c => {
+            const combinedScore = getCombinedScore(c.id);
+            const juryCount = getJuryEvalCount(c.id);
+            // Collect per-jury scores for detail
+            const juryScores = juryMembers.map(j => {
+                const ev = evaluations[j.id] && evaluations[j.id][c.id];
+                return { jury: j, score: calcOverall(ev), ev: ev || {} };
+            }).filter(x => x.score !== null);
+            return { ...c, score: combinedScore, juryCount, juryScores };
+        })
+        .filter(c => c.score !== null)
+        .sort((a, b) => b.score - a.score);
+
+    if (ranked.length === 0) {
+        list.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+
+    empty.classList.add('hidden');
+
+    list.innerHTML = `
+        <!-- Legend -->
+        <div class="glass-card rounded-2xl p-6 mb-6">
+            <div class="flex items-center gap-6 flex-wrap">
+                <div class="flex items-center gap-2">
+                    <div class="w-3.5 h-3.5 rounded-full bg-emerald-500"></div>
+                    <span class="text-sm text-white/50">Selected (Top 10)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3.5 h-3.5 rounded-full bg-white/20"></div>
+                    <span class="text-sm text-white/50">Not Selected</span>
+                </div>
+                <div class="flex items-center gap-2 ml-4">
+                    <span class="text-sm text-white/40">Jury Members: ${juryMembers.length}</span>
+                </div>
+                <div class="ml-auto text-sm text-white/30">${ranked.length} evaluated candidate${ranked.length !== 1 ? 's' : ''}</div>
+            </div>
+        </div>
+
+        <!-- Table Header -->
+        <div class="hidden lg:grid grid-cols-12 gap-4 px-6 py-3 text-sm text-white/40 uppercase tracking-wider mb-2">
+            <div class="col-span-1">Rank</div>
+            <div class="col-span-3">Candidate</div>
+            <div class="col-span-4">Avg. Criteria Breakdown</div>
+            <div class="col-span-2 text-center">Combined Avg.</div>
+            <div class="col-span-2 text-center">Status</div>
+        </div>
+
+        ${ranked.map((c, i) => {
+            const isTop10 = i < 10;
+            const idx = candidates.indexOf(candidates.find(x => x.id === c.id));
+            const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+            const maxScore = 5;
+            const pct = (c.score / maxScore * 100).toFixed(0);
+
+            const criteriaBreakdown = CRITERIA.map(cr => {
+                const avgR = getCombinedCriterionScore(c.id, cr.id);
+                return `<div class="flex items-center gap-2" title="${cr.name}: ${avgR.toFixed(1)}/5">
+                    <span class="text-xs text-white/30 w-8 truncate">${cr.name.slice(0, 4)}</span>
+                    <div class="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                        <div class="h-full rounded-full ${isTop10 ? 'bg-emerald-500/60' : 'bg-white/20'}" style="width: ${avgR * 20}%"></div>
+                    </div>
+                    <span class="text-xs text-white/30 w-6">${avgR.toFixed(1)}</span>
+                </div>`;
+            }).join('');
+
+            // Per-jury score pills
+            const juryPills = c.juryScores.map(js =>
+                `<span class="text-xs px-2 py-0.5 rounded-md bg-white/5 text-white/40" title="${js.jury.name}: ${js.score.toFixed(1)}">${js.jury.name.split(' ')[0]}: ${js.score.toFixed(1)}</span>`
+            ).join('');
+
+            return `
+            <div class="glass-card rounded-2xl p-6 mb-3 ${isTop10 ? 'top-10' : ''} fade-in" style="animation-delay: ${i * 0.03}s">
+                <div class="lg:grid grid-cols-12 gap-4 items-center">
+                    <!-- Rank -->
+                    <div class="col-span-1 mb-3 lg:mb-0">
+                        <span class="${i < 3 ? 'badge-rank' : isTop10 ? 'badge-selected' : 'bg-white/10'}
+                            inline-flex items-center justify-center w-10 h-10 rounded-lg text-base font-bold">
+                            ${i + 1}
+                        </span>
+                    </div>
+
+                    <!-- Candidate Info -->
+                    <div class="col-span-3 flex items-center gap-3 mb-3 lg:mb-0">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center text-sm font-bold shrink-0">
+                            ${getInitials(c.name)}
+                        </div>
+                        <div>
+                            <p class="font-semibold text-base">${c.name}</p>
+                            <p class="text-white/40 text-sm">${c.role} · ${c.department}</p>
+                        </div>
+                    </div>
+
+                    <!-- Breakdown (desktop) -->
+                    <div class="col-span-4 hidden lg:block">
+                        <div class="grid grid-cols-1 gap-1">
+                            ${criteriaBreakdown}
+                        </div>
+                    </div>
+
+                    <!-- Overall Score -->
+                    <div class="col-span-2 text-center mb-3 lg:mb-0">
+                        <div class="inline-flex flex-col items-center">
+                            <span class="text-3xl font-bold ${isTop10 ? 'text-emerald-400' : 'text-white/60'}">${c.score.toFixed(2)}</span>
+                            <div class="w-full mt-1.5 h-2 rounded-full bg-white/5 overflow-hidden" style="width: 90px">
+                                <div class="h-full rounded-full ${isTop10 ? 'bg-emerald-500' : 'bg-white/20'}" style="width: ${pct}%"></div>
+                            </div>
+                            <span class="text-xs text-white/30 mt-1">${pct}% · ${c.juryCount}/${juryMembers.length} jury</span>
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="col-span-2 text-center">
+                        ${isTop10
+                            ? '<span class="text-sm font-semibold px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300">Selected</span>'
+                            : '<span class="text-sm px-3 py-1.5 rounded-lg bg-white/5 text-white/30">Reserve</span>'
+                        }
+                    </div>
+                </div>
+
+                <!-- Per-jury scores -->
+                <div class="mt-4 pt-3 border-t border-white/5 flex items-center gap-2 flex-wrap">
+                    <span class="text-xs text-white/25">Jury scores:</span>
+                    ${juryPills}
+                </div>
+            </div>`;
+        }).join('')}
+    `;
+}
+
+// ==================== EXPORT ====================
+
+function exportResults() {
+    const ranked = candidates
+        .map(c => ({ ...c, score: getCombinedScore(c.id), juryCount: getJuryEvalCount(c.id) }))
+        .filter(c => c.score !== null)
+        .sort((a, b) => b.score - a.score);
+
+    if (ranked.length === 0) { alert('No evaluations to export.'); return; }
+
+    const juryNames = juryMembers.map(j => j.name);
+    const headers = ['Rank', 'Name', 'Role', 'Department', 'Years', 'Email',
+        ...CRITERIA.map(cr => cr.name + ' (Avg)'),
+        ...juryNames.map(n => n + ' (Score)'),
+        'Combined Average', 'Jury Count', 'Status'
+    ];
+
+    const rows = ranked.map((c, i) => [
+        i + 1, c.name, c.role, c.department, c.years || '', c.email || '',
+        ...CRITERIA.map(cr => getCombinedCriterionScore(c.id, cr.id).toFixed(1)),
+        ...juryMembers.map(j => {
+            const ev = evaluations[j.id] && evaluations[j.id][c.id];
+            const s = calcOverall(ev);
+            return s !== null ? s.toFixed(2) : '';
+        }),
+        c.score.toFixed(2),
+        c.juryCount + '/' + juryMembers.length,
+        i < 10 ? 'Selected' : 'Reserve'
+    ]);
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'MB_Talent_Selection_2026.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ==================== INIT ====================
+populateJurySelect();
+renderCandidates();
+
+// Handle Enter key in modals
+document.getElementById('add-modal').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addCandidate();
+});
+document.getElementById('jury-modal').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addJuryMember();
+});
+</script>
+
+</body>
+</html>
