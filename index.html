@@ -381,6 +381,44 @@
         </div>
     </div>
 
+    <!-- Edit Candidate Modal -->
+    <div id="edit-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="modal-overlay absolute inset-0" onclick="closeEditModal()"></div>
+        <div class="glass-strong rounded-3xl p-8 max-w-lg w-full relative z-10 fade-in">
+            <h3 class="text-2xl font-bold mb-6">Edit Candidate</h3>
+            <div class="space-y-5">
+                <div>
+                    <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Full Name *</label>
+                    <input id="edit-name" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Position / Role *</label>
+                        <input id="edit-role" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Department *</label>
+                        <input id="edit-dept" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Years at MB</label>
+                        <input id="edit-years" type="number" min="0" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Email</label>
+                        <input id="edit-email" type="email" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-8">
+                <button onclick="closeEditModal()" class="px-6 py-3 rounded-xl text-base text-white/60 hover:text-white transition-all">Cancel</button>
+                <button onclick="saveEditCandidate()" class="bg-white/15 hover:bg-white/25 px-7 py-3 rounded-xl text-base font-semibold transition-all">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Add Jury Member Modal -->
     <div id="jury-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
         <div class="modal-overlay absolute inset-0" onclick="closeJuryModal()"></div>
@@ -608,7 +646,10 @@ function renderCandidates() {
                         <p class="text-white/40 text-sm">${c.role}</p>
                     </div>
                 </div>
-                <button onclick="removeCandidate(${i})" class="text-white/20 hover:text-red-400 transition-colors text-xl leading-none" title="Remove">&times;</button>
+                <div class="flex items-center gap-2">
+                    <button onclick="openEditModal(${i})" class="text-white/20 hover:text-blue-400 transition-colors text-sm" title="Edit">&#9998;</button>
+                    <button onclick="removeCandidate(${i})" class="text-white/20 hover:text-red-400 transition-colors text-xl leading-none" title="Remove">&times;</button>
+                </div>
             </div>
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -683,6 +724,44 @@ function addCandidate() {
 
     save();
     closeAddModal();
+    renderCandidates();
+}
+
+let editIndex = -1;
+
+function openEditModal(index) {
+    editIndex = index;
+    const c = candidates[index];
+    document.getElementById('edit-name').value = c.name;
+    document.getElementById('edit-role').value = c.role;
+    document.getElementById('edit-dept').value = c.department;
+    document.getElementById('edit-years').value = c.years || '';
+    document.getElementById('edit-email').value = c.email || '';
+    document.getElementById('edit-modal').classList.remove('hidden');
+    document.getElementById('edit-modal').classList.add('flex');
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+    document.getElementById('edit-modal').classList.remove('flex');
+    editIndex = -1;
+}
+
+function saveEditCandidate() {
+    if (editIndex < 0) return;
+    const name = document.getElementById('edit-name').value.trim();
+    const role = document.getElementById('edit-role').value.trim();
+    const dept = document.getElementById('edit-dept').value.trim();
+    const years = document.getElementById('edit-years').value;
+    const email = document.getElementById('edit-email').value.trim();
+    if (!name || !role || !dept) { alert('Please fill in Name, Role, and Department.'); return; }
+    candidates[editIndex].name = name;
+    candidates[editIndex].role = role;
+    candidates[editIndex].department = dept;
+    candidates[editIndex].years = years || null;
+    candidates[editIndex].email = email || null;
+    save();
+    closeEditModal();
     renderCandidates();
 }
 
@@ -1039,6 +1118,9 @@ document.getElementById('add-modal').addEventListener('keydown', e => {
 });
 document.getElementById('jury-modal').addEventListener('keydown', e => {
     if (e.key === 'Enter') addJuryMember();
+});
+document.getElementById('edit-modal').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveEditCandidate();
 });
 </script>
 
