@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mercedes-Benz Talent Selection Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
@@ -450,6 +452,22 @@
     </footer>
 
 <script>
+// ==================== FIREBASE CONFIG ====================
+// Replace with your Firebase project config from:
+// Firebase Console > Project Settings > General > Your apps > Web app
+const firebaseConfig = {
+    apiKey: "AIzaSyA1F-JVMr5u8_-wPpMzre2RQS3SPwhA7gE",
+    authDomain: "talent-development-1bcd3.firebaseapp.com",
+    databaseURL: "https://talent-development-1bcd3-default-rtdb.firebaseio.com",
+    projectId: "talent-development-1bcd3",
+    storageBucket: "talent-development-1bcd3.firebasestorage.app",
+    messagingSenderId: "302071423448",
+    appId: "1:302071423448:web:f13cb72a96f1692f0ed2ad"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 // ==================== DATA ====================
 
 const CRITERIA = [
@@ -460,17 +478,77 @@ const CRITERIA = [
     { id: 'motivation', name: 'Motivation & Commitment', desc: 'Genuine interest in the programme, willingness to invest time and effort', fullWidth: true },
 ];
 
-let candidates = JSON.parse(localStorage.getItem('mb_candidates') || '[]');
-// evaluations structure: { juryId: { candidateId: { criterion_rating: N, criterion_comment: '', general_comment: '' } } }
-let evaluations = JSON.parse(localStorage.getItem('mb_evaluations_v2') || '{}');
-let juryMembers = JSON.parse(localStorage.getItem('mb_jury') || '[]');
+let candidates = [];
+let evaluations = {};
+let juryMembers = [];
 let activeJuryId = localStorage.getItem('mb_active_jury') || '';
+let dbReady = false;
+
+// ==================== FIREBASE SYNC ====================
 
 function save() {
-    localStorage.setItem('mb_candidates', JSON.stringify(candidates));
-    localStorage.setItem('mb_evaluations_v2', JSON.stringify(evaluations));
-    localStorage.setItem('mb_jury', JSON.stringify(juryMembers));
+    // Only save activeJuryId locally (per-browser preference)
     localStorage.setItem('mb_active_jury', activeJuryId);
+    // Write shared data to Firebase
+    if (!dbReady) return;
+    db.ref('candidates').set(candidates);
+    db.ref('evaluations').set(evaluations);
+    db.ref('juryMembers').set(juryMembers);
+}
+
+function saveEvaluations() {
+    localStorage.setItem('mb_active_jury', activeJuryId);
+    if (!dbReady) return;
+    db.ref('evaluations').set(evaluations);
+}
+
+function saveCandidates() {
+    if (!dbReady) return;
+    db.ref('candidates').set(candidates);
+}
+
+function saveJury() {
+    localStorage.setItem('mb_active_jury', activeJuryId);
+    if (!dbReady) return;
+    db.ref('juryMembers').set(juryMembers);
+    db.ref('evaluations').set(evaluations);
+}
+
+// Real-time listeners - update UI instantly when any jury member makes changes
+db.ref('candidates').on('value', snapshot => {
+    candidates = snapshot.val() || [];
+    dbReady = true;
+    renderIfVisible('candidates');
+    renderIfVisible('ranking');
+    populateEvalSelect();
+    updateJuryStatus();
+});
+
+db.ref('evaluations').on('value', snapshot => {
+    evaluations = snapshot.val() || {};
+    renderIfVisible('candidates');
+    renderIfVisible('ranking');
+    updateJuryStatus();
+    // Refresh current eval display if viewing one
+    const evalSelect = document.getElementById('eval-select');
+    if (evalSelect && evalSelect.value && !document.getElementById('panel-evaluate').classList.contains('hidden')) {
+        updateOverallDisplay();
+    }
+});
+
+db.ref('juryMembers').on('value', snapshot => {
+    juryMembers = snapshot.val() || [];
+    populateJurySelect();
+    renderIfVisible('ranking');
+    updateJuryStatus();
+});
+
+function renderIfVisible(tab) {
+    const panel = document.getElementById('panel-' + tab);
+    if (panel && !panel.classList.contains('hidden')) {
+        if (tab === 'candidates') renderCandidates();
+        if (tab === 'ranking') renderRanking();
+    }
 }
 
 // ==================== JURY MEMBERS ====================
@@ -487,7 +565,7 @@ function populateJurySelect() {
 
 function switchJury() {
     activeJuryId = document.getElementById('jury-select').value;
-    save();
+    localStorage.setItem('mb_active_jury', activeJuryId);
     updateJuryStatus();
     // Reload current eval if on evaluate tab
     if (!document.getElementById('panel-evaluate').classList.contains('hidden')) {
@@ -534,7 +612,7 @@ function addJuryMember() {
     juryMembers.push({ id, name, role: role || null });
     activeJuryId = id;
     evaluations[id] = {};
-    save();
+    saveJury();
     closeJuryModal();
     populateJurySelect();
 }
@@ -546,7 +624,7 @@ function removeJuryMember() {
     delete evaluations[activeJuryId];
     juryMembers = juryMembers.filter(x => x.id !== activeJuryId);
     activeJuryId = '';
-    save();
+    saveJury();
     populateJurySelect();
     renderCandidates();
 }
@@ -722,9 +800,8 @@ function addCandidate() {
         email: email || null,
     });
 
-    save();
+    saveCandidates();
     closeAddModal();
-    renderCandidates();
 }
 
 let editIndex = -1;
@@ -760,9 +837,8 @@ function saveEditCandidate() {
     candidates[editIndex].department = dept;
     candidates[editIndex].years = years || null;
     candidates[editIndex].email = email || null;
-    save();
+    saveCandidates();
     closeEditModal();
-    renderCandidates();
 }
 
 function removeCandidate(index) {
@@ -773,8 +849,8 @@ function removeCandidate(index) {
     juryMembers.forEach(j => {
         if (evaluations[j.id]) delete evaluations[j.id][id];
     });
-    save();
-    renderCandidates();
+    saveCandidates();
+    saveEvaluations();
 }
 
 // ==================== EVALUATION ====================
@@ -871,7 +947,7 @@ function setRating(criterionId, score) {
     if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
     if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
     evaluations[activeJuryId][cid][criterionId + '_rating'] = score;
-    save();
+    saveEvaluations();
 
     // Update stars
     const container = document.getElementById('stars-' + criterionId);
@@ -893,7 +969,7 @@ function setComment(criterionId, value) {
     if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
     if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
     evaluations[activeJuryId][cid][criterionId + '_comment'] = value;
-    save();
+    saveEvaluations();
 }
 
 function saveCurrentEvaluation() {
@@ -902,7 +978,7 @@ function saveCurrentEvaluation() {
     if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
     if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
     evaluations[activeJuryId][cid].general_comment = document.getElementById('eval-general-comment').value;
-    save();
+    saveEvaluations();
 }
 
 function calcOverall(ev) {
@@ -1109,8 +1185,9 @@ function exportResults() {
 }
 
 // ==================== INIT ====================
+// Initial renders are triggered by Firebase listeners above.
+// Only activeJuryId is local (per-browser).
 populateJurySelect();
-renderCandidates();
 
 // Handle Enter key in modals
 document.getElementById('add-modal').addEventListener('keydown', e => {
