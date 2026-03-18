@@ -486,37 +486,38 @@ let dbReady = false;
 
 // ==================== FIREBASE SYNC ====================
 
-function save() {
-    // Only save activeJuryId locally (per-browser preference)
-    localStorage.setItem('mb_active_jury', activeJuryId);
-    // Write shared data to Firebase
-    if (!dbReady) return;
-    db.ref('candidates').set(candidates);
-    db.ref('evaluations').set(evaluations);
-    db.ref('juryMembers').set(juryMembers);
+// Firebase deletes nodes set to [] or {}, so we always write something
+function fbWrite(path, data) {
+    return db.ref(path).set(data).catch(err => {
+        console.error('Firebase write error at ' + path + ':', err);
+        alert('Database error: ' + err.message);
+    });
+}
+
+function saveCandidates() {
+    // Store as object keyed by index to avoid Firebase array issues
+    const obj = {};
+    candidates.forEach((c, i) => { obj[c.id] = c; });
+    fbWrite('candidates', Object.keys(obj).length > 0 ? obj : null);
 }
 
 function saveEvaluations() {
     localStorage.setItem('mb_active_jury', activeJuryId);
-    if (!dbReady) return;
-    db.ref('evaluations').set(evaluations);
-}
-
-function saveCandidates() {
-    if (!dbReady) return;
-    db.ref('candidates').set(candidates);
+    fbWrite('evaluations', Object.keys(evaluations).length > 0 ? evaluations : null);
 }
 
 function saveJury() {
     localStorage.setItem('mb_active_jury', activeJuryId);
-    if (!dbReady) return;
-    db.ref('juryMembers').set(juryMembers);
-    db.ref('evaluations').set(evaluations);
+    const obj = {};
+    juryMembers.forEach(j => { obj[j.id] = j; });
+    fbWrite('juryMembers', Object.keys(obj).length > 0 ? obj : null);
+    fbWrite('evaluations', Object.keys(evaluations).length > 0 ? evaluations : null);
 }
 
 // Real-time listeners - update UI instantly when any jury member makes changes
 db.ref('candidates').on('value', snapshot => {
-    candidates = snapshot.val() || [];
+    const val = snapshot.val();
+    candidates = val ? Object.values(val) : [];
     dbReady = true;
     renderIfVisible('candidates');
     renderIfVisible('ranking');
@@ -537,10 +538,19 @@ db.ref('evaluations').on('value', snapshot => {
 });
 
 db.ref('juryMembers').on('value', snapshot => {
-    juryMembers = snapshot.val() || [];
+    const val = snapshot.val();
+    juryMembers = val ? Object.values(val) : [];
     populateJurySelect();
     renderIfVisible('ranking');
     updateJuryStatus();
+});
+
+// Mark ready once initial connection succeeds
+db.ref('.info/connected').on('value', snapshot => {
+    if (snapshot.val() === true) {
+        dbReady = true;
+        console.log('Firebase connected');
+    }
 });
 
 function renderIfVisible(tab) {
