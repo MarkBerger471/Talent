@@ -1079,7 +1079,7 @@ function loadEvaluation() {
             </div>
             <div class="flex items-center gap-2 mb-4" id="stars-${cr.id}">
                 ${[1,2,3,4,5].map(s => `
-                    <button type="button" onclick="setRating('${cr.id}', ${s})"
+                    <button type="button" onclick="setRating('${cr.id}', ${s})" ondblclick="clearRating('${cr.id}')"
                         class="star-btn text-3xl ${s <= rating ? 'active' : 'inactive'}">&#9733;</button>
                 `).join('')}
             </div>
@@ -1113,6 +1113,26 @@ function setRating(criterionId, score) {
     // Update score label
     document.getElementById('score-label-' + criterionId).textContent = score + '/5';
 
+    updateOverallDisplay();
+    updateJuryStatus();
+}
+
+function clearRating(criterionId) {
+    const cid = document.getElementById('eval-select').value;
+    if (!cid || !activeJuryId) return;
+
+    if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
+    if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
+    delete evaluations[activeJuryId][cid][criterionId + '_rating'];
+    saveEvaluations();
+
+    const container = document.getElementById('stars-' + criterionId);
+    container.querySelectorAll('.star-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.classList.add('inactive');
+    });
+
+    document.getElementById('score-label-' + criterionId).textContent = '';
     updateOverallDisplay();
     updateJuryStatus();
 }
