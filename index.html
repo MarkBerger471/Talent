@@ -6,6 +6,7 @@
     <title>Mercedes-Benz Talent Selection Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -136,6 +137,43 @@
     </style>
 </head>
 <body class="text-white min-h-screen">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center">
+        <div class="fixed inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
+            <div class="absolute top-1/3 -left-20 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-20 right-1/4 w-72 h-72 bg-teal-600/8 rounded-full blur-3xl"></div>
+        </div>
+        <div class="glass-strong rounded-3xl p-10 max-w-md w-full relative z-10 fade-in">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-14 h-14 flex items-center justify-center">
+                    <img src="mercedes-logo.svg" alt="Mercedes-Benz" class="w-14 h-14">
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold mercedes-gradient">Talent Selection Panel</h1>
+                    <p class="text-sm text-white/40">Mercedes-Benz Manufacturing Thailand</p>
+                </div>
+            </div>
+            <div class="space-y-5">
+                <div>
+                    <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Your Name *</label>
+                    <input id="login-name" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Dr. Somchai">
+                </div>
+                <div>
+                    <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Password *</label>
+                    <input id="login-password" type="password" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="Enter shared password">
+                </div>
+                <p id="login-error" class="text-red-400 text-sm hidden">Incorrect password. Please try again.</p>
+            </div>
+            <button onclick="attemptLogin()" class="w-full mt-8 bg-white/15 hover:bg-white/25 px-7 py-3.5 rounded-xl text-base font-semibold transition-all">
+                Sign In
+            </button>
+        </div>
+    </div>
+
+    <!-- App (hidden until login) -->
+    <div id="app-container" class="hidden">
 
     <!-- Ambient background blobs -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none">
@@ -451,6 +489,8 @@
         </div>
     </footer>
 
+    </div><!-- /app-container -->
+
 <script>
 // ==================== FIREBASE CONFIG ====================
 // Replace with your Firebase project config from:
@@ -466,7 +506,103 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 const db = firebase.database();
+
+// ==================== AUTH ====================
+const PASS_HASH = '0e5e3fd132dba2785f122e4cf40a8fc8d8e35f473951d6877b4bde27eb3b9044';
+let authResolve;
+let authReady = new Promise(resolve => { authResolve = resolve; });
+
+async function sha256(text) {
+    const data = new TextEncoder().encode(text);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function attemptLogin() {
+    const name = document.getElementById('login-name').value.trim();
+    const pass = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+
+    if (!name) { errorEl.textContent = 'Please enter your name.'; errorEl.classList.remove('hidden'); return; }
+    if (!pass) { errorEl.textContent = 'Please enter the password.'; errorEl.classList.remove('hidden'); return; }
+
+    const hash = await sha256(pass);
+    if (hash !== PASS_HASH) {
+        errorEl.textContent = 'Incorrect password. Please try again.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    errorEl.classList.add('hidden');
+
+    try {
+        await auth.signInAnonymously();
+    } catch (err) {
+        console.error('Auth error:', err);
+        errorEl.textContent = 'Authentication failed. Please try again.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    // Store logged-in name for session
+    sessionStorage.setItem('mb_login_name', name);
+
+    // Show app, hide login
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app-container').classList.remove('hidden');
+
+    // Resolve auth so Firebase listeners attach
+    authResolve();
+
+    // After data loads, auto-create or select jury member by name
+    setTimeout(() => { autoSelectJury(name); }, 500);
+}
+
+function autoSelectJury(name) {
+    let jury = juryMembers.find(j => j.name.toLowerCase() === name.toLowerCase());
+    if (!jury) {
+        // Create jury member automatically
+        const id = 'j_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+        jury = { id, name, role: null };
+        juryMembers.push(jury);
+        evaluations[id] = {};
+        saveJury();
+    }
+    activeJuryId = jury.id;
+    localStorage.setItem('mb_active_jury', activeJuryId);
+    populateJurySelect();
+    renderCandidates();
+}
+
+// Check if already logged in this session
+(function checkSession() {
+    const savedName = sessionStorage.getItem('mb_login_name');
+    if (savedName) {
+        auth.signInAnonymously().then(() => {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            authResolve();
+            setTimeout(() => { autoSelectJury(savedName); }, 500);
+        }).catch(() => {
+            // Session expired, show login
+        });
+    }
+})();
+
+// Enter key on login form
+document.getElementById('login-screen').addEventListener('keydown', e => {
+    if (e.key === 'Enter') attemptLogin();
+});
+
+// ==================== HTML ESCAPING ====================
+function esc(str) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
 
 // ==================== DATA ====================
 
@@ -514,7 +650,9 @@ function saveJury() {
     fbWrite('evaluations', Object.keys(evaluations).length > 0 ? evaluations : null);
 }
 
-// Real-time listeners - update UI instantly when any jury member makes changes
+// Real-time listeners - wait for auth then update UI instantly when any jury member makes changes
+authReady.then(() => {
+
 db.ref('candidates').on('value', snapshot => {
     const val = snapshot.val();
     candidates = val ? Object.values(val) : [];
@@ -553,6 +691,8 @@ db.ref('.info/connected').on('value', snapshot => {
     }
 });
 
+}); // end authReady.then
+
 function renderIfVisible(tab) {
     const panel = document.getElementById('panel-' + tab);
     if (panel && !panel.classList.contains('hidden')) {
@@ -566,7 +706,7 @@ function renderIfVisible(tab) {
 function populateJurySelect() {
     const sel = document.getElementById('jury-select');
     sel.innerHTML = '<option value="">Select your name...</option>' +
-        juryMembers.map(j => `<option value="${j.id}">${j.name}${j.role ? ' — ' + j.role : ''}</option>`).join('');
+        juryMembers.map(j => `<option value="${esc(j.id)}">${esc(j.name)}${j.role ? ' — ' + esc(j.role) : ''}</option>`).join('');
     if (activeJuryId && juryMembers.find(j => j.id === activeJuryId)) {
         sel.value = activeJuryId;
     }
@@ -727,22 +867,22 @@ function renderCandidates() {
             <div class="flex items-start justify-between mb-5">
                 <div class="flex items-center gap-4">
                     <div class="w-14 h-14 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center text-lg font-bold shrink-0">
-                        ${getInitials(c.name)}
+                        ${esc(getInitials(c.name))}
                     </div>
                     <div>
-                        <h4 class="font-semibold text-lg">${c.name}</h4>
-                        <p class="text-white/40 text-sm">${c.role}</p>
+                        <h4 class="font-semibold text-lg">${esc(c.name)}</h4>
+                        <p class="text-white/40 text-sm">${esc(c.role)}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="openEditModal(${i})" class="text-white/20 hover:text-blue-400 transition-colors text-sm" title="Edit">&#9998;</button>
-                    <button onclick="removeCandidate(${i})" class="text-white/20 hover:text-red-400 transition-colors text-xl leading-none" title="Remove">&times;</button>
+                    <button onclick="openEditModal('${esc(c.id)}')" class="text-white/20 hover:text-blue-400 transition-colors text-sm" title="Edit">&#9998;</button>
+                    <button onclick="removeCandidate('${esc(c.id)}')" class="text-white/20 hover:text-red-400 transition-colors text-xl leading-none" title="Remove">&times;</button>
                 </div>
             </div>
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <span class="text-sm text-white/30">${c.department}</span>
-                    ${c.years ? `<span class="text-sm text-white/20">&middot; ${c.years}y</span>` : ''}
+                    <span class="text-sm text-white/30">${esc(c.department)}</span>
+                    ${c.years ? `<span class="text-sm text-white/20">&middot; ${esc(String(c.years))}y</span>` : ''}
                 </div>
                 <div class="flex items-center gap-2">
                     ${juryCount > 0
@@ -814,11 +954,12 @@ function addCandidate() {
     closeAddModal();
 }
 
-let editIndex = -1;
+let editId = null;
 
-function openEditModal(index) {
-    editIndex = index;
-    const c = candidates[index];
+function openEditModal(id) {
+    editId = id;
+    const c = candidates.find(x => x.id === id);
+    if (!c) return;
     document.getElementById('edit-name').value = c.name;
     document.getElementById('edit-role').value = c.role;
     document.getElementById('edit-dept').value = c.department;
@@ -831,30 +972,33 @@ function openEditModal(index) {
 function closeEditModal() {
     document.getElementById('edit-modal').classList.add('hidden');
     document.getElementById('edit-modal').classList.remove('flex');
-    editIndex = -1;
+    editId = null;
 }
 
 function saveEditCandidate() {
-    if (editIndex < 0) return;
+    if (!editId) return;
+    const c = candidates.find(x => x.id === editId);
+    if (!c) return;
     const name = document.getElementById('edit-name').value.trim();
     const role = document.getElementById('edit-role').value.trim();
     const dept = document.getElementById('edit-dept').value.trim();
     const years = document.getElementById('edit-years').value;
     const email = document.getElementById('edit-email').value.trim();
     if (!name || !role || !dept) { alert('Please fill in Name, Role, and Department.'); return; }
-    candidates[editIndex].name = name;
-    candidates[editIndex].role = role;
-    candidates[editIndex].department = dept;
-    candidates[editIndex].years = years || null;
-    candidates[editIndex].email = email || null;
+    c.name = name;
+    c.role = role;
+    c.department = dept;
+    c.years = years || null;
+    c.email = email || null;
     saveCandidates();
     closeEditModal();
 }
 
-function removeCandidate(index) {
-    if (!confirm(`Remove "${candidates[index].name}" from the candidate pool?`)) return;
-    const id = candidates[index].id;
-    candidates.splice(index, 1);
+function removeCandidate(id) {
+    const c = candidates.find(x => x.id === id);
+    if (!c) return;
+    if (!confirm(`Remove "${c.name}" from the candidate pool?`)) return;
+    candidates = candidates.filter(x => x.id !== id);
     // Remove from all jury evaluations
     juryMembers.forEach(j => {
         if (evaluations[j.id]) delete evaluations[j.id][id];
@@ -875,7 +1019,7 @@ function populateEvalSelect() {
     const sel = document.getElementById('eval-select');
     const currentVal = sel.value;
     sel.innerHTML = '<option value="">Select a candidate...</option>' +
-        candidates.map(c => `<option value="${c.id}">${c.name} — ${c.role}</option>`).join('');
+        candidates.map(c => `<option value="${esc(c.id)}">${esc(c.name)} — ${esc(c.role)}</option>`).join('');
     if (currentVal && candidates.find(c => c.id === currentVal)) {
         sel.value = currentVal;
     }
@@ -1092,7 +1236,7 @@ function renderRanking() {
 
             // Per-jury score pills
             const juryPills = c.juryScores.map(js =>
-                `<span class="text-xs px-2 py-0.5 rounded-md bg-white/5 text-white/40" title="${js.jury.name}: ${js.score.toFixed(1)}">${js.jury.name.split(' ')[0]}: ${js.score.toFixed(1)}</span>`
+                `<span class="text-xs px-2 py-0.5 rounded-md bg-white/5 text-white/40" title="${esc(js.jury.name)}: ${js.score.toFixed(1)}">${esc(js.jury.name.split(' ')[0])}: ${js.score.toFixed(1)}</span>`
             ).join('');
 
             return `
@@ -1109,11 +1253,11 @@ function renderRanking() {
                     <!-- Candidate Info -->
                     <div class="col-span-3 flex items-center gap-3 mb-3 lg:mb-0">
                         <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center text-sm font-bold shrink-0">
-                            ${getInitials(c.name)}
+                            ${esc(getInitials(c.name))}
                         </div>
                         <div>
-                            <p class="font-semibold text-base">${c.name}</p>
-                            <p class="text-white/40 text-sm">${c.role} · ${c.department}</p>
+                            <p class="font-semibold text-base">${esc(c.name)}</p>
+                            <p class="text-white/40 text-sm">${esc(c.role)} · ${esc(c.department)}</p>
                         </div>
                     </div>
 
