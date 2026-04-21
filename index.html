@@ -158,11 +158,11 @@
             <div class="space-y-5">
                 <div>
                     <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Your Name *</label>
-                    <input id="login-name" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Dr. Somchai">
+                    <input id="login-name" type="text" maxlength="100" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Dr. Somchai">
                 </div>
                 <div>
                     <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Password *</label>
-                    <input id="login-password" type="password" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="Enter shared password">
+                    <input id="login-password" type="password" maxlength="100" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="Enter shared password">
                 </div>
                 <p id="login-error" class="text-red-400 text-sm hidden">Incorrect password. Please try again.</p>
             </div>
@@ -204,6 +204,11 @@
         </div>
     </header>
 
+    <!-- Offline banner -->
+    <div id="offline-banner" class="hidden relative z-10 bg-amber-500/20 border-b border-amber-400/40 text-amber-200 text-sm text-center py-2 no-print">
+        &#9888; You are offline &middot; changes will not sync until the connection is restored
+    </div>
+
     <!-- Jury Member Bar -->
     <div class="relative z-10 glass border-b border-white/5 no-print">
         <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
@@ -215,7 +220,10 @@
                 <button onclick="openJuryModal()" class="glass px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-all">+ Add Jury Member</button>
                 <button onclick="removeJuryMember()" class="glass px-3 py-2 rounded-lg text-sm hover:bg-red-500/20 hover:text-red-300 transition-all text-white/40">&times; Remove</button>
             </div>
-            <div id="jury-status" class="text-sm text-white/30"></div>
+            <div class="flex items-center gap-4">
+                <div id="jury-status" class="text-sm text-white/30"></div>
+                <button onclick="logout()" class="glass px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-all text-white/50" title="Sign Out">Sign Out</button>
+            </div>
         </div>
     </div>
 
@@ -330,7 +338,7 @@
                 <!-- General Comments -->
                 <div class="glass-card rounded-2xl p-6 mb-8">
                     <label class="text-base font-semibold text-white/70 block mb-3">General Comments & Recommendation</label>
-                    <textarea id="eval-general-comment" onchange="saveCurrentEvaluation()"
+                    <textarea id="eval-general-comment" onchange="saveCurrentEvaluation()" maxlength="4000"
                         class="glass-input rounded-xl w-full p-4 text-base text-white outline-none resize-none h-32"
                         placeholder="Overall impression, strengths, concerns, recommendation..."></textarea>
                 </div>
@@ -391,26 +399,26 @@
             <div class="space-y-5">
                 <div>
                     <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Full Name *</label>
-                    <input id="input-name" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Somchai Rittikorn">
+                    <input id="input-name" type="text" maxlength="100" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Somchai Rittikorn">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Position / Role *</label>
-                        <input id="input-role" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Senior Engineer">
+                        <input id="input-role" type="text" maxlength="100" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Senior Engineer">
                     </div>
                     <div>
                         <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Department *</label>
-                        <input id="input-dept" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. R&D">
+                        <input id="input-dept" type="text" maxlength="100" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. R&D">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Years at MB</label>
-                        <input id="input-years" type="number" min="0" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. 5">
+                        <input id="input-years" type="number" min="0" max="60" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. 5">
                     </div>
                     <div>
                         <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Email</label>
-                        <input id="input-email" type="email" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="name@mercedes-benz.com">
+                        <input id="input-email" type="email" maxlength="150" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="name@mercedes-benz.com">
                     </div>
                 </div>
             </div>
@@ -429,26 +437,26 @@
             <div class="space-y-5">
                 <div>
                     <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Full Name *</label>
-                    <input id="edit-name" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
+                    <input id="edit-name" type="text" maxlength="100" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Position / Role *</label>
-                        <input id="edit-role" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
+                        <input id="edit-role" type="text" maxlength="100" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
                     </div>
                     <div>
                         <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Department *</label>
-                        <input id="edit-dept" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
+                        <input id="edit-dept" type="text" maxlength="100" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Years at MB</label>
-                        <input id="edit-years" type="number" min="0" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
+                        <input id="edit-years" type="number" min="0" max="60" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
                     </div>
                     <div>
                         <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Email</label>
-                        <input id="edit-email" type="email" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
+                        <input id="edit-email" type="email" maxlength="150" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none">
                     </div>
                 </div>
             </div>
@@ -467,11 +475,11 @@
             <div class="space-y-5">
                 <div>
                     <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Full Name *</label>
-                    <input id="input-jury-name" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Dr. Somchai">
+                    <input id="input-jury-name" type="text" maxlength="100" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. Dr. Somchai">
                 </div>
                 <div>
                     <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Role / Title</label>
-                    <input id="input-jury-role" type="text" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. VP Human Resources">
+                    <input id="input-jury-role" type="text" maxlength="100" class="glass-input rounded-xl w-full px-5 py-3.5 text-base text-white outline-none" placeholder="e.g. VP Human Resources">
                 </div>
             </div>
             <div class="flex justify-end gap-3 mt-8">
@@ -556,19 +564,18 @@ async function attemptLogin() {
     // Resolve auth so Firebase listeners attach
     authResolve();
 
-    // After data loads, auto-create or select jury member by name
-    setTimeout(() => { autoSelectJury(name); }, 500);
+    // Wait for the first juryMembers snapshot before matching/creating
+    await juryLoaded;
+    autoSelectJury(name);
 }
 
-function autoSelectJury(name) {
+async function autoSelectJury(name) {
     let jury = juryMembers.find(j => j.name.toLowerCase() === name.toLowerCase());
     if (!jury) {
-        // Create jury member automatically
         const id = 'j_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
         jury = { id, name, role: null };
-        juryMembers.push(jury);
-        evaluations[id] = {};
-        saveJury();
+        // Per-key write — only adds this one member, doesn't overwrite others
+        await saveJuryMember(jury);
     }
     activeJuryId = jury.id;
     localStorage.setItem('mb_active_jury', activeJuryId);
@@ -577,19 +584,27 @@ function autoSelectJury(name) {
 }
 
 // Check if already logged in this session
-(function checkSession() {
+(async function checkSession() {
     const savedName = sessionStorage.getItem('mb_login_name');
-    if (savedName) {
-        auth.signInAnonymously().then(() => {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            authResolve();
-            setTimeout(() => { autoSelectJury(savedName); }, 500);
-        }).catch(() => {
-            // Session expired, show login
-        });
+    if (!savedName) return;
+    try {
+        await auth.signInAnonymously();
+    } catch (e) {
+        return; // Session expired, fall through to login screen
     }
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app-container').classList.remove('hidden');
+    authResolve();
+    await juryLoaded;
+    autoSelectJury(savedName);
 })();
+
+function logout() {
+    if (!confirm('Sign out?')) return;
+    sessionStorage.removeItem('mb_login_name');
+    localStorage.removeItem('mb_active_jury');
+    auth.signOut().finally(() => location.reload());
+}
 
 // Enter key on login form
 document.getElementById('login-screen').addEventListener('keydown', e => {
@@ -598,10 +613,13 @@ document.getElementById('login-screen').addEventListener('keydown', e => {
 
 // ==================== HTML ESCAPING ====================
 function esc(str) {
-    if (!str) return '';
-    const d = document.createElement('div');
-    d.textContent = str;
-    return d.innerHTML;
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // ==================== DATA ====================
@@ -618,36 +636,46 @@ let candidates = [];
 let evaluations = {};
 let juryMembers = [];
 let activeJuryId = localStorage.getItem('mb_active_jury') || '';
-let dbReady = false;
+
+// Resolves once the first juryMembers snapshot arrives from Firebase
+let juryLoadedResolve;
+const juryLoaded = new Promise(resolve => { juryLoadedResolve = resolve; });
 
 // ==================== FIREBASE SYNC ====================
 
-// Firebase deletes nodes set to [] or {}, so we always write something
-function fbWrite(path, data) {
-    return db.ref(path).set(data).catch(err => {
-        console.error('Firebase write error at ' + path + ':', err);
+// Per-key writes — each change targets only its own path, so concurrent
+// edits from different jurors don't overwrite each other.
+
+let lastErrorTime = 0;
+function handleFbError(err) {
+    console.error('Firebase error:', err);
+    const now = Date.now();
+    if (now - lastErrorTime > 30000) {
+        lastErrorTime = now;
         alert('Database error: ' + err.message);
+    }
+}
+
+function fbSet(path, data) { return db.ref(path).set(data).catch(handleFbError); }
+function fbUpdate(updates) { return db.ref().update(updates).catch(handleFbError); }
+function fbRemove(path) { return db.ref(path).remove().catch(handleFbError); }
+
+function saveCandidate(c) { return fbSet('candidates/' + c.id, c); }
+function deleteCandidate(id) {
+    const updates = { ['candidates/' + id]: null };
+    juryMembers.forEach(j => { updates['evaluations/' + j.id + '/' + id] = null; });
+    return fbUpdate(updates);
+}
+function saveJuryMember(j) { return fbSet('juryMembers/' + j.id, j); }
+function deleteJuryMember(id) {
+    return fbUpdate({
+        ['juryMembers/' + id]: null,
+        ['evaluations/' + id]: null,
     });
 }
-
-function saveCandidates() {
-    // Store as object keyed by index to avoid Firebase array issues
-    const obj = {};
-    candidates.forEach((c, i) => { obj[c.id] = c; });
-    fbWrite('candidates', Object.keys(obj).length > 0 ? obj : null);
-}
-
-function saveEvaluations() {
-    localStorage.setItem('mb_active_jury', activeJuryId);
-    fbWrite('evaluations', Object.keys(evaluations).length > 0 ? evaluations : null);
-}
-
-function saveJury() {
-    localStorage.setItem('mb_active_jury', activeJuryId);
-    const obj = {};
-    juryMembers.forEach(j => { obj[j.id] = j; });
-    fbWrite('juryMembers', Object.keys(obj).length > 0 ? obj : null);
-    fbWrite('evaluations', Object.keys(evaluations).length > 0 ? evaluations : null);
+function saveEvalField(juryId, cid, field, value) {
+    const path = 'evaluations/' + juryId + '/' + cid + '/' + field;
+    return value == null || value === '' ? fbRemove(path) : fbSet(path, value);
 }
 
 // Real-time listeners - wait for auth then update UI instantly when any jury member makes changes
@@ -656,7 +684,6 @@ authReady.then(() => {
 db.ref('candidates').on('value', snapshot => {
     const val = snapshot.val();
     candidates = val ? Object.values(val) : [];
-    dbReady = true;
     renderIfVisible('candidates');
     renderIfVisible('ranking');
     populateEvalSelect();
@@ -681,14 +708,14 @@ db.ref('juryMembers').on('value', snapshot => {
     populateJurySelect();
     renderIfVisible('ranking');
     updateJuryStatus();
+    if (juryLoadedResolve) { juryLoadedResolve(); juryLoadedResolve = null; }
 });
 
-// Mark ready once initial connection succeeds
+// Connection status banner
 db.ref('.info/connected').on('value', snapshot => {
-    if (snapshot.val() === true) {
-        dbReady = true;
-        console.log('Firebase connected');
-    }
+    const connected = snapshot.val() === true;
+    const banner = document.getElementById('offline-banner');
+    if (banner) banner.classList.toggle('hidden', connected);
 });
 
 }); // end authReady.then
@@ -759,24 +786,22 @@ function addJuryMember() {
     if (!name) { alert('Please enter a name.'); return; }
 
     const id = 'j_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-    juryMembers.push({ id, name, role: role || null });
+    const jury = { id, name, role: role || null };
     activeJuryId = id;
-    evaluations[id] = {};
-    saveJury();
+    localStorage.setItem('mb_active_jury', activeJuryId);
+    saveJuryMember(jury);
     closeJuryModal();
-    populateJurySelect();
 }
 
 function removeJuryMember() {
     if (!activeJuryId) { alert('Please select a jury member first.'); return; }
     const j = juryMembers.find(x => x.id === activeJuryId);
+    if (!j) return;
     if (!confirm(`Remove jury member "${j.name}" and all their evaluations?`)) return;
-    delete evaluations[activeJuryId];
-    juryMembers = juryMembers.filter(x => x.id !== activeJuryId);
+    const id = activeJuryId;
     activeJuryId = '';
-    saveJury();
-    populateJurySelect();
-    renderCandidates();
+    localStorage.setItem('mb_active_jury', '');
+    deleteJuryMember(id);
 }
 
 // ==================== TABS ====================
@@ -943,14 +968,13 @@ function addCandidate() {
         return;
     }
 
-    candidates.push({
+    const c = {
         id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         name, role, department: dept,
-        years: years || null,
+        years: years ? parseInt(years, 10) : null,
         email: email || null,
-    });
-
-    saveCandidates();
+    };
+    saveCandidate(c);
     closeAddModal();
 }
 
@@ -985,12 +1009,13 @@ function saveEditCandidate() {
     const years = document.getElementById('edit-years').value;
     const email = document.getElementById('edit-email').value.trim();
     if (!name || !role || !dept) { alert('Please fill in Name, Role, and Department.'); return; }
-    c.name = name;
-    c.role = role;
-    c.department = dept;
-    c.years = years || null;
-    c.email = email || null;
-    saveCandidates();
+    const updated = {
+        ...c,
+        name, role, department: dept,
+        years: years ? parseInt(years, 10) : null,
+        email: email || null,
+    };
+    saveCandidate(updated);
     closeEditModal();
 }
 
@@ -998,13 +1023,7 @@ function removeCandidate(id) {
     const c = candidates.find(x => x.id === id);
     if (!c) return;
     if (!confirm(`Remove "${c.name}" from the candidate pool?`)) return;
-    candidates = candidates.filter(x => x.id !== id);
-    // Remove from all jury evaluations
-    juryMembers.forEach(j => {
-        if (evaluations[j.id]) delete evaluations[j.id][id];
-    });
-    saveCandidates();
-    saveEvaluations();
+    deleteCandidate(id);
 }
 
 // ==================== EVALUATION ====================
@@ -1085,7 +1104,8 @@ function loadEvaluation() {
             </div>
             <textarea onchange="setComment('${cr.id}', this.value)"
                 class="glass-input rounded-lg w-full p-4 text-sm text-white outline-none resize-none h-20"
-                placeholder="Comment on ${cr.name.toLowerCase()}...">${comment}</textarea>
+                maxlength="2000"
+                placeholder="Comment on ${cr.name.toLowerCase()}...">${esc(comment)}</textarea>
         </div>`;
     }).join('');
 
@@ -1101,7 +1121,7 @@ function setRating(criterionId, score) {
     if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
     if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
     evaluations[activeJuryId][cid][criterionId + '_rating'] = score;
-    saveEvaluations();
+    saveEvalField(activeJuryId, cid, criterionId + '_rating', score);
 
     // Update stars
     const container = document.getElementById('stars-' + criterionId);
@@ -1121,10 +1141,10 @@ function clearRating(criterionId) {
     const cid = document.getElementById('eval-select').value;
     if (!cid || !activeJuryId) return;
 
-    if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
-    if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
-    delete evaluations[activeJuryId][cid][criterionId + '_rating'];
-    saveEvaluations();
+    if (evaluations[activeJuryId] && evaluations[activeJuryId][cid]) {
+        delete evaluations[activeJuryId][cid][criterionId + '_rating'];
+    }
+    saveEvalField(activeJuryId, cid, criterionId + '_rating', null);
 
     const container = document.getElementById('stars-' + criterionId);
     container.querySelectorAll('.star-btn').forEach(btn => {
@@ -1143,22 +1163,24 @@ function setComment(criterionId, value) {
     if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
     if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
     evaluations[activeJuryId][cid][criterionId + '_comment'] = value;
-    saveEvaluations();
+    saveEvalField(activeJuryId, cid, criterionId + '_comment', value);
 }
 
 function saveCurrentEvaluation() {
     const cid = document.getElementById('eval-select').value;
     if (!cid || !activeJuryId) return;
+    const value = document.getElementById('eval-general-comment').value;
     if (!evaluations[activeJuryId]) evaluations[activeJuryId] = {};
     if (!evaluations[activeJuryId][cid]) evaluations[activeJuryId][cid] = {};
-    evaluations[activeJuryId][cid].general_comment = document.getElementById('eval-general-comment').value;
-    saveEvaluations();
+    evaluations[activeJuryId][cid].general_comment = value;
+    saveEvalField(activeJuryId, cid, 'general_comment', value);
 }
 
 function calcOverall(ev) {
     if (!ev) return null;
-    const ratings = CRITERIA.map(cr => ev[cr.id + '_rating'] || 0).filter(r => r > 0);
-    if (ratings.length === 0) return null;
+    const ratings = CRITERIA.map(cr => ev[cr.id + '_rating']);
+    // Require all criteria to be rated — a partial eval doesn't count
+    if (ratings.some(r => !r)) return null;
     return ratings.reduce((a, b) => a + b, 0) / ratings.length;
 }
 
@@ -1348,14 +1370,25 @@ function exportResults() {
         i < 10 ? 'Selected' : 'Reserve'
     ]);
 
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csvCell = v => {
+        let s = v == null ? '' : String(v);
+        // Prefix formula-injection characters with a quote
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+        return '"' + s.replace(/"/g, '""') + '"';
+    };
+    const toRow = arr => arr.map(csvCell).join(',');
+
+    // Prepend BOM so Excel detects UTF-8
+    const csv = '﻿' + [toRow(headers), ...rows.map(toRow)].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'MB_Talent_Selection_2026.csv';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ==================== INIT ====================
@@ -1363,15 +1396,26 @@ function exportResults() {
 // Only activeJuryId is local (per-browser).
 populateJurySelect();
 
-// Handle Enter key in modals
+// Handle Enter key in modals (ignore Shift+Enter in textareas)
 document.getElementById('add-modal').addEventListener('keydown', e => {
-    if (e.key === 'Enter') addCandidate();
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') addCandidate();
 });
 document.getElementById('jury-modal').addEventListener('keydown', e => {
-    if (e.key === 'Enter') addJuryMember();
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') addJuryMember();
 });
 document.getElementById('edit-modal').addEventListener('keydown', e => {
-    if (e.key === 'Enter') saveEditCandidate();
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') saveEditCandidate();
+});
+
+// Escape key closes any open modal
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const addM = document.getElementById('add-modal');
+    const editM = document.getElementById('edit-modal');
+    const juryM = document.getElementById('jury-modal');
+    if (!addM.classList.contains('hidden')) closeAddModal();
+    else if (!editM.classList.contains('hidden')) closeEditModal();
+    else if (!juryM.classList.contains('hidden')) closeJuryModal();
 });
 </script>
 
