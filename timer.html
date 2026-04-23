@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presentation Timer · Mercedes-Benz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background:
+                /* Center spotlight for depth */
+                radial-gradient(ellipse at 50% 45%, rgba(96, 165, 250, 0.18) 0%, rgba(96,165,250,0.05) 30%, transparent 60%),
+                /* Deep vignette at corners */
+                radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.55) 100%),
+                /* Base gradient */
+                linear-gradient(135deg, #05060a 0%, #0c1327 30%, #0f2347 55%, #10335e 75%, #0a1530 100%);
+            background-attachment: fixed;
+        }
+        /* Subtle moving shimmer planes for a 3D parallax feel */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::before {
+            background: radial-gradient(circle at 20% 30%, rgba(120, 90, 255, 0.12), transparent 45%);
+            filter: blur(40px);
+        }
+        body::after {
+            background: radial-gradient(circle at 85% 75%, rgba(45, 212, 191, 0.10), transparent 45%);
+            filter: blur(40px);
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .glass-strong {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .mercedes-gradient {
+            background: linear-gradient(135deg, #c0c0c0, #e8e8e8, #c0c0c0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .mode-btn {
+            color: rgba(255, 255, 255, 0.5);
+            transition: all 0.2s ease;
+        }
+        .mode-btn:hover { color: rgba(255, 255, 255, 0.8); }
+        .mode-btn.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.08);
+        }
+        .timer-ring {
+            transform: rotate(-90deg);
+        }
+        .timer-ring circle {
+            transition: stroke-dashoffset 1s linear, stroke 0.5s ease;
+        }
+        /* Mercedes star integrated into the timer — its outer ring coincides
+           with our progress ring, so the two read as one object. */
+        .mercedes-inset {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.22;
+            filter: brightness(1.4) drop-shadow(0 0 30px rgba(255,255,255,0.15));
+            pointer-events: none;
+        }
+        .timer-wrap {
+            width: min(600px, 72vh, 90vw);
+            aspect-ratio: 1 / 1;
+            position: relative;
+            /* Floats the whole timer above the background with depth */
+            filter:
+                drop-shadow(0 40px 60px rgba(0, 0, 0, 0.55))
+                drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35));
+        }
+        .timer-ring { transform: rotate(-90deg); }
+        .timer-ring .progress {
+            transition: stroke-dashoffset 1s linear, stroke 0.5s ease, filter 0.5s ease;
+            filter: drop-shadow(0 0 18px currentColor);
+        }
+        @keyframes pulseCritical {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.5)); }
+            50%      { filter: drop-shadow(0 0 55px rgba(239, 68, 68, 1));   }
+        }
+        .critical { animation: pulseCritical 0.9s ease-in-out infinite; }
+        @keyframes timeUpFlash {
+            0%, 50%, 100% { opacity: 1;    }
+            25%, 75%      { opacity: 0.35; }
+        }
+        .time-up { animation: timeUpFlash 0.7s ease-in-out 5; }
+        kbd {
+            font-family: ui-monospace, 'SF Mono', monospace;
+            font-size: 0.72rem;
+        }
+        @media (max-width: 480px) {
+            .time-text { font-size: 4.5rem !important; }
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col">
+
+    <!-- Ambient background blobs -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
+        <div class="absolute top-1/3 -left-20 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-20 right-1/4 w-72 h-72 bg-teal-600/8 rounded-full blur-3xl"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="relative z-10 glass-strong border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 flex items-center justify-center">
+                    <img src="mercedes-logo.svg" alt="Mercedes-Benz" class="w-14 h-14">
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold mercedes-gradient">Presentation Timer</h1>
+                    <p class="text-xs md:text-sm text-white/50 tracking-wider uppercase">Mercedes-Benz Manufacturing Thailand</p>
+                </div>
+            </div>
+            <a href="index.html" class="hidden sm:inline-block text-sm text-white/40 hover:text-white/70 transition-all">&larr; Selection Panel</a>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-10 gap-10">
+
+        <!-- Mode selector -->
+        <div class="glass-strong rounded-2xl p-1.5 flex gap-1">
+            <button id="mode-present" class="mode-btn active px-6 md:px-10 py-3 rounded-xl text-base md:text-lg font-semibold">
+                Presentation &middot; 3:00
+            </button>
+            <button id="mode-qa" class="mode-btn px-6 md:px-10 py-3 rounded-xl text-base md:text-lg font-semibold">
+                Q&amp;A &middot; 2:00
+            </button>
+        </div>
+
+        <!-- Timer ring aligned with Mercedes star outer ring (both at r=475/1000) -->
+        <div class="timer-wrap">
+            <!-- Mercedes star behind -->
+            <img src="mercedes-logo.svg" alt="" class="mercedes-inset">
+
+            <!-- Progress ring — overlays the Mercedes star's outer ring exactly -->
+            <svg class="timer-ring absolute inset-0 w-full h-full" viewBox="0 0 1000 1000">
+                <defs>
+                    <!-- Soft centered spotlight behind the timer for depth -->
+                    <radialGradient id="inner-glow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%"  stop-color="rgba(96,165,250,0.14)"/>
+                        <stop offset="65%" stop-color="rgba(96,165,250,0.02)"/>
+                        <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+                    </radialGradient>
+                    <!-- 3D bevel highlight on the track (top-left lighter) -->
+                    <linearGradient id="track-bevel" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%"   stop-color="rgba(255,255,255,0.18)"/>
+                        <stop offset="50%"  stop-color="rgba(255,255,255,0.04)"/>
+                        <stop offset="100%" stop-color="rgba(0,0,0,0.35)"/>
+                    </linearGradient>
+                </defs>
+
+                <!-- Spotlight disc -->
+                <circle cx="500" cy="500" r="430" fill="url(#inner-glow)"/>
+
+                <!-- Track: outer rim (darker, sits at the bottom visually) -->
+                <circle cx="500" cy="500" r="475" stroke="rgba(0,0,0,0.35)" stroke-width="48" fill="none"/>
+                <!-- Track: bevel highlight -->
+                <circle cx="500" cy="500" r="475" stroke="url(#track-bevel)" stroke-width="42" fill="none"/>
+
+                <!-- Progress ring -->
+                <circle id="progress" class="progress" cx="500" cy="500" r="475"
+                    stroke="#60a5fa" stroke-width="38" fill="none" stroke-linecap="round"/>
+            </svg>
+
+            <!-- Timer text -->
+            <div id="timer-display" class="absolute inset-0 flex items-center justify-center">
+                <div id="time-text" class="time-text text-8xl md:text-9xl font-bold tracking-tight tabular-nums leading-none drop-shadow-[0_0_30px_rgba(255,255,255,0.08)]">3:00</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex gap-3 md:gap-4">
+            <button id="btn-start" class="glass-strong px-8 md:px-12 py-4 rounded-2xl text-lg font-semibold hover:bg-white/20 transition-all min-w-[140px] md:min-w-[180px]">
+                Start
+            </button>
+            <button id="btn-reset" class="glass px-8 md:px-12 py-4 rounded-2xl text-lg font-semibold hover:bg-white/10 transition-all min-w-[140px] md:min-w-[180px]">
+                Reset
+            </button>
+        </div>
+
+        <p class="text-white/30 text-xs md:text-sm text-center">
+            <kbd class="px-2 py-0.5 rounded bg-white/10 text-white/60">Space</kbd> start/pause &nbsp;&middot;&nbsp;
+            <kbd class="px-2 py-0.5 rounded bg-white/10 text-white/60">R</kbd> reset &nbsp;&middot;&nbsp;
+            <kbd class="px-2 py-0.5 rounded bg-white/10 text-white/60">1</kbd> presentation &nbsp;&middot;&nbsp;
+            <kbd class="px-2 py-0.5 rounded bg-white/10 text-white/60">2</kbd> Q&amp;A
+        </p>
+    </main>
+
+    <footer class="relative z-10 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-6 py-5 text-center">
+            <p class="text-white/30 text-xs md:text-sm">Mercedes-Benz Manufacturing Thailand &middot; Talent Development 2026</p>
+        </div>
+    </footer>
+
+<script>
+    const PRESETS = {
+        present: { seconds: 180, label: 'Presentation' },
+        qa:      { seconds: 120, label: 'Q&A' },
+    };
+
+    // Matches the progress <circle r="475"> in the SVG above
+    const RADIUS = 475;
+    const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+    let currentMode  = 'present';
+    let totalSeconds = PRESETS.present.seconds;
+    // Absolute end-time reference: when the timer is running, endTime is the
+    // performance.now() timestamp at which remaining should hit zero. When
+    // paused or reset, remainingMs holds the current value.
+    let remainingMs  = totalSeconds * 1000;
+    let endTime      = 0;
+    let running      = false;
+    let rafId        = null;
+
+    const els = {
+        timeText:    document.getElementById('time-text'),
+        progress:    document.getElementById('progress'),
+        btnStart:    document.getElementById('btn-start'),
+        btnReset:    document.getElementById('btn-reset'),
+        modePresent: document.getElementById('mode-present'),
+        modeQa:      document.getElementById('mode-qa'),
+        display:     document.getElementById('timer-display'),
+    };
+
+    els.progress.style.strokeDasharray  = CIRCUMFERENCE;
+    els.progress.style.strokeDashoffset = 0;
+
+    function formatTime(ms) {
+        const totalSec = Math.max(0, Math.ceil(ms / 1000));
+        const m = Math.floor(totalSec / 60);
+        const s = totalSec % 60;
+        return m + ':' + String(s).padStart(2, '0');
+    }
+
+    function colorFor(pct) {
+        // Blue while > 1/3 remains (first 2/3 of the time), yellow after that,
+        // red in the final 10%.
+        if (pct > 1 / 3)  return '#60a5fa'; // blue
+        if (pct > 0.10)   return '#fbbf24'; // yellow
+        return '#ef4444';                   // red — critical
+    }
+
+    function render() {
+        els.timeText.textContent = formatTime(remainingMs);
+
+        const pct = Math.max(0, remainingMs / (totalSeconds * 1000));
+        els.progress.style.strokeDashoffset = CIRCUMFERENCE * (1 - pct);
+
+        const color = colorFor(pct);
+        els.progress.style.stroke = color;
+        els.timeText.style.color  = pct > 0.10 ? '#fff' : color;
+
+        if (pct <= 0.10 && running && remainingMs > 0) {
+            els.display.classList.add('critical');
+        } else {
+            els.display.classList.remove('critical');
+        }
+    }
+
+    function loop(ts) {
+        if (!running) return;
+        remainingMs = endTime - ts;
+        if (remainingMs <= 0) {
+            remainingMs = 0;
+            render();
+            timeUp();
+            return;
+        }
+        render();
+        rafId = requestAnimationFrame(loop);
+    }
+
+    function start() {
+        if (remainingMs <= 0) return;
+        running = true;
+        endTime = performance.now() + remainingMs;
+        els.btnStart.textContent = 'Pause';
+        rafId = requestAnimationFrame(loop);
+    }
+
+    function pause() {
+        if (!running) return;
+        running = false;
+        remainingMs = Math.max(0, endTime - performance.now());
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = null;
+        els.btnStart.textContent = 'Resume';
+        els.display.classList.remove('critical');
+        render();
+    }
+
+    function reset() {
+        running = false;
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = null;
+        remainingMs = totalSeconds * 1000;
+        endTime = 0;
+        els.btnStart.textContent = 'Start';
+        els.display.classList.remove('critical', 'time-up');
+        render();
+    }
+
+    function timeUp() {
+        running = false;
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = null;
+        remainingMs = 0;
+        els.btnStart.textContent = 'Start';
+        els.display.classList.remove('critical');
+        els.display.classList.add('time-up');
+        setTimeout(() => els.display.classList.remove('time-up'), 3500);
+        playEndChime();
+    }
+
+    // Audio: create one AudioContext on the first user gesture and keep it
+    // alive. Browsers block audio created outside a user gesture, which is
+    // why the chime failed from the rAF callback.
+    let audioCtx = null;
+    function ensureAudio() {
+        if (!audioCtx) {
+            try {
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) return null;
+                audioCtx = new Ctx();
+            } catch (e) { return null; }
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+        }
+        return audioCtx;
+    }
+
+    function playEndChime() {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        const t0 = ctx.currentTime + 0.05;
+
+        // Descending minor triad arpeggio played twice, each note with a
+        // fundamental + octave harmonic and a long bell-like decay.
+        const notes = [880, 698.46, 523.25]; // A5, F5, C5
+        const gap = 0.38;
+        const sustain = 1.5;
+
+        function playNote(freq, start) {
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const osc2 = ctx.createOscillator();
+            osc2.type = 'sine';
+            osc2.frequency.value = freq * 2;
+
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(0.4, start + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + sustain);
+
+            const gain2 = ctx.createGain();
+            gain2.gain.setValueAtTime(0.0001, start);
+            gain2.gain.exponentialRampToValueAtTime(0.12, start + 0.01);
+            gain2.gain.exponentialRampToValueAtTime(0.0001, start + sustain * 0.7);
+
+            osc.connect(gain).connect(ctx.destination);
+            osc2.connect(gain2).connect(ctx.destination);
+            osc.start(start);  osc.stop(start + sustain + 0.05);
+            osc2.start(start); osc2.stop(start + sustain + 0.05);
+        }
+
+        notes.forEach((f, i) => playNote(f, t0 + i * gap));
+        const passTwoStart = t0 + notes.length * gap + 0.45;
+        notes.forEach((f, i) => playNote(f, passTwoStart + i * gap));
+    }
+
+    function setMode(mode) {
+        if (!PRESETS[mode]) return;
+        currentMode = mode;
+        totalSeconds = PRESETS[mode].seconds;
+        els.modePresent.classList.toggle('active', mode === 'present');
+        els.modeQa.classList.toggle('active',      mode === 'qa');
+        reset();
+    }
+
+    // Event listeners — each user gesture unlocks audio so the end-chime
+    // is guaranteed to fire later from the animation loop.
+    els.btnStart.addEventListener('click', () => { ensureAudio(); running ? pause() : start(); });
+    els.btnReset.addEventListener('click', () => { ensureAudio(); reset(); });
+    els.modePresent.addEventListener('click', () => { ensureAudio(); setMode('present'); });
+    els.modeQa.addEventListener('click',      () => { ensureAudio(); setMode('qa'); });
+
+    document.addEventListener('keydown', e => {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+        ensureAudio();
+        if (e.key === ' ' || e.code === 'Space') {
+            e.preventDefault();
+            running ? pause() : start();
+        } else if (e.key === 'r' || e.key === 'R') {
+            reset();
+        } else if (e.key === '1') {
+            setMode('present');
+        } else if (e.key === '2') {
+            setMode('qa');
+        }
+    });
+
+    // When tab returns to foreground, rAF resumes — but if the timer should
+    // already be zero, rAF won't have fired, so trigger timeUp explicitly.
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible' || !running) return;
+        const now = performance.now();
+        if (now >= endTime) {
+            remainingMs = 0;
+            render();
+            timeUp();
+        }
+    });
+
+    render();
+</script>
+</body>
+</html>
