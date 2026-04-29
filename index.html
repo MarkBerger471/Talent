@@ -249,6 +249,9 @@
                 <button onclick="showTab('ranking')" id="tab-ranking" class="px-6 py-4 text-base font-medium rounded-t-lg transition-all hover:bg-white/10 text-white/60">
                     <span class="mr-2">&#9650;</span>Ranking & Selection
                 </button>
+                <button onclick="showTab('feedback')" id="tab-feedback" class="px-6 py-4 text-base font-medium rounded-t-lg transition-all hover:bg-white/10 text-white/60">
+                    <span class="mr-2">&#9993;</span>Feedback
+                </button>
             </div>
         </div>
     </nav>
@@ -395,6 +398,49 @@
                 <div class="text-7xl mb-4 opacity-20">&#9650;</div>
                 <p class="text-white/30 text-xl">No evaluations completed yet</p>
                 <p class="text-white/20 text-base mt-2">Evaluate candidates first to see rankings</p>
+            </div>
+        </div>
+
+        <!-- ========== FEEDBACK TAB ========== -->
+        <div id="panel-feedback" class="hidden fade-in">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4 no-print">
+                <div>
+                    <h2 class="text-4xl font-bold">Feedback</h2>
+                    <p class="text-white/50 text-base mt-2">All jury comments per candidate &mdash; filter, review, export anonymized PDF</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="exportFeedbackCSV()" class="glass px-5 py-3 rounded-xl text-base hover:bg-white/10 transition-all flex items-center gap-2">
+                        &#8681; Export Comments CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="glass-card rounded-2xl p-5 mb-6 no-print">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Department</label>
+                        <select id="fb-dept" onchange="renderFeedback()" class="glass-input rounded-xl w-full px-5 py-3 text-base text-white outline-none">
+                            <option value="">All departments</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-sm text-white/50 uppercase tracking-wider block mb-2">Candidate</label>
+                        <select id="fb-candidate" onchange="renderFeedback()" class="glass-input rounded-xl w-full px-5 py-3 text-base text-white outline-none">
+                            <option value="">All candidates</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="feedback-list">
+                <!-- Filled by JS -->
+            </div>
+
+            <div id="feedback-empty" class="text-center py-20">
+                <div class="text-7xl mb-4 opacity-20">&#9993;</div>
+                <p class="text-white/30 text-xl">No candidates match the current filters</p>
+                <p class="text-white/20 text-base mt-2">Adjust the department or candidate filter</p>
             </div>
         </div>
 
@@ -695,6 +741,7 @@ db.ref('candidates').on('value', snapshot => {
     candidates = val ? Object.values(val) : [];
     renderIfVisible('candidates');
     renderIfVisible('ranking');
+    renderIfVisible('feedback');
     populateEvalSelect();
     updateJuryStatus();
 });
@@ -703,6 +750,7 @@ db.ref('evaluations').on('value', snapshot => {
     evaluations = snapshot.val() || {};
     renderIfVisible('candidates');
     renderIfVisible('ranking');
+    renderIfVisible('feedback');
     updateJuryStatus();
     // Refresh current eval display if viewing one
     const evalSelect = document.getElementById('eval-select');
@@ -716,6 +764,7 @@ db.ref('juryMembers').on('value', snapshot => {
     juryMembers = val ? Object.values(val) : [];
     populateJurySelect();
     renderIfVisible('ranking');
+    renderIfVisible('feedback');
     updateJuryStatus();
     if (juryLoadedResolve) { juryLoadedResolve(); juryLoadedResolve = null; }
 });
@@ -734,6 +783,7 @@ function renderIfVisible(tab) {
     if (panel && !panel.classList.contains('hidden')) {
         if (tab === 'candidates') renderCandidates();
         if (tab === 'ranking') renderRanking();
+        if (tab === 'feedback') renderFeedback();
     }
 }
 
@@ -816,7 +866,7 @@ function removeJuryMember() {
 // ==================== TABS ====================
 
 function showTab(tab) {
-    ['candidates', 'evaluate', 'ranking'].forEach(t => {
+    ['candidates', 'evaluate', 'ranking', 'feedback'].forEach(t => {
         document.getElementById('panel-' + t).classList.toggle('hidden', t !== tab);
         const tabBtn = document.getElementById('tab-' + t);
         tabBtn.classList.toggle('tab-active', t === tab);
@@ -825,6 +875,7 @@ function showTab(tab) {
     if (tab === 'candidates') renderCandidates();
     if (tab === 'evaluate') populateEvalSelect();
     if (tab === 'ranking') renderRanking();
+    if (tab === 'feedback') renderFeedback();
 }
 
 // ==================== CANDIDATES ====================
@@ -1349,6 +1400,434 @@ function renderRanking() {
     `;
 }
 
+// ==================== FEEDBACK ====================
+
+function getDepartments() {
+    const set = new Set();
+    candidates.forEach(c => { if (c.department) set.add(c.department); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+function populateFeedbackFilters() {
+    const deptSel = document.getElementById('fb-dept');
+    const candSel = document.getElementById('fb-candidate');
+    if (!deptSel || !candSel) return;
+
+    const prevDept = deptSel.value;
+    const prevCand = candSel.value;
+
+    deptSel.innerHTML = '<option value="">All departments</option>' +
+        getDepartments().map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+    if (prevDept && getDepartments().includes(prevDept)) deptSel.value = prevDept;
+
+    const filteredCands = prevDept
+        ? candidates.filter(c => c.department === prevDept)
+        : candidates;
+    const sortedCands = filteredCands.slice().sort((a, b) => a.name.localeCompare(b.name));
+    candSel.innerHTML = '<option value="">All candidates</option>' +
+        sortedCands.map(c => `<option value="${esc(c.id)}">${esc(c.name)} &mdash; ${esc(c.department)}</option>`).join('');
+    if (prevCand && sortedCands.find(c => c.id === prevCand)) candSel.value = prevCand;
+}
+
+function getJuryEvalsForCandidate(candidateId) {
+    return juryMembers.map(j => {
+        const ev = (evaluations[j.id] && evaluations[j.id][candidateId]) || {};
+        return { jury: j, ev, score: calcOverall(ev) };
+    });
+}
+
+function hasAnyContent(juryEvals) {
+    return juryEvals.some(({ ev }) => {
+        if (calcOverall(ev) !== null) return true;
+        if (ev.general_comment && ev.general_comment.trim()) return true;
+        return CRITERIA.some(cr =>
+            ev[cr.id + '_rating'] ||
+            (ev[cr.id + '_comment'] && ev[cr.id + '_comment'].trim())
+        );
+    });
+}
+
+function renderFeedback() {
+    populateFeedbackFilters();
+
+    const deptFilter = document.getElementById('fb-dept').value;
+    const candFilter = document.getElementById('fb-candidate').value;
+
+    let list = candidates.slice();
+    if (deptFilter) list = list.filter(c => c.department === deptFilter);
+    if (candFilter) list = list.filter(c => c.id === candFilter);
+
+    // Group by department, sort by name within each
+    const byDept = {};
+    list.forEach(c => {
+        const d = c.department || '(No Department)';
+        (byDept[d] = byDept[d] || []).push(c);
+    });
+    Object.values(byDept).forEach(arr => arr.sort((a, b) => a.name.localeCompare(b.name)));
+    const deptOrder = Object.keys(byDept).sort((a, b) => a.localeCompare(b));
+
+    const container = document.getElementById('feedback-list');
+    const empty = document.getElementById('feedback-empty');
+
+    if (list.length === 0) {
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+
+    container.innerHTML = deptOrder.map(dept => {
+        const cards = byDept[dept].map(c => renderFeedbackCard(c)).join('');
+        return `
+        <div class="mb-10">
+            <div class="flex items-center gap-3 mb-4 px-1">
+                <h3 class="text-2xl font-semibold text-white/80">${esc(dept)}</h3>
+                <span class="text-sm text-white/30">${byDept[dept].length} candidate${byDept[dept].length !== 1 ? 's' : ''}</span>
+            </div>
+            ${cards}
+        </div>`;
+    }).join('');
+}
+
+function renderFeedbackCard(c) {
+    const juryEvals = getJuryEvalsForCandidate(c.id);
+    const combined = getCombinedScore(c.id);
+    const idx = candidates.findIndex(x => x.id === c.id);
+    const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+
+    const criteriaSummary = CRITERIA.map(cr => {
+        const avg = getCombinedCriterionScore(c.id, cr.id);
+        const has = juryEvals.some(({ ev }) => ev[cr.id + '_rating']);
+        return `<div class="flex items-center gap-2">
+            <span class="text-xs text-white/40 w-32 truncate" title="${esc(cr.name)}">${esc(cr.name)}</span>
+            <div class="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div class="h-full rounded-full bg-blue-500/60" style="width: ${avg * 20}%"></div>
+            </div>
+            <span class="text-xs text-white/50 w-10 text-right">${has ? avg.toFixed(1) : '&mdash;'}</span>
+        </div>`;
+    }).join('');
+
+    const juryBlocks = juryEvals.map(({ jury, ev, score }) => {
+        const rated = score !== null;
+        const general = ev.general_comment && ev.general_comment.trim();
+
+        const perCriterion = CRITERIA.map(cr => {
+            const r = ev[cr.id + '_rating'];
+            const cm = ev[cr.id + '_comment'];
+            if (!r && !(cm && cm.trim())) return '';
+            return `<div class="mt-3">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-sm font-medium text-white/70">${esc(cr.name)}</span>
+                    <span class="text-sm text-white/50">${r ? r + '/5' : '&mdash;'}</span>
+                </div>
+                ${cm && cm.trim()
+                    ? `<p class="text-sm text-white/60 whitespace-pre-wrap leading-relaxed">${esc(cm)}</p>`
+                    : '<p class="text-sm text-white/25 italic">No comment</p>'}
+            </div>`;
+        }).join('');
+
+        const hasAny = rated || general || CRITERIA.some(cr => ev[cr.id + '_rating'] || (ev[cr.id + '_comment'] && ev[cr.id + '_comment'].trim()));
+
+        return `
+        <div class="glass rounded-xl p-5">
+            <div class="flex items-center justify-between mb-2 pb-3 border-b border-white/10">
+                <div>
+                    <p class="font-semibold text-white/90">${esc(jury.name)}</p>
+                    ${jury.role ? `<p class="text-xs text-white/40">${esc(jury.role)}</p>` : ''}
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-white/30 uppercase tracking-wider">Overall</p>
+                    <p class="text-2xl font-bold ${rated ? 'text-blue-300' : 'text-white/30'}">${rated ? score.toFixed(1) : '&mdash;'}</p>
+                </div>
+            </div>
+            ${!hasAny ? '<p class="text-sm text-white/30 italic mt-2">No evaluation yet</p>' : ''}
+            ${perCriterion}
+            ${general
+                ? `<div class="mt-4 pt-3 border-t border-white/5">
+                    <p class="text-xs text-white/40 uppercase tracking-wider mb-2">General Comment & Recommendation</p>
+                    <p class="text-sm text-white/75 whitespace-pre-wrap leading-relaxed">${esc(general)}</p>
+                </div>`
+                : ''}
+        </div>`;
+    }).join('');
+
+    return `
+    <div class="glass-card rounded-2xl p-6 mb-4">
+        <div class="flex items-start justify-between gap-4 mb-5 flex-wrap">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center text-lg font-bold shrink-0">
+                    ${esc(getInitials(c.name))}
+                </div>
+                <div>
+                    <h4 class="font-semibold text-xl">${esc(c.name)}</h4>
+                    <p class="text-white/50 text-sm">${esc(c.role)} &middot; ${esc(c.department)}${c.years ? ' &middot; ' + esc(String(c.years)) + 'y' : ''}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="text-right">
+                    <p class="text-xs text-white/30 uppercase tracking-wider">Combined</p>
+                    <p class="text-3xl font-bold ${combined !== null ? 'text-emerald-300' : 'text-white/30'}">${combined !== null ? combined.toFixed(1) : '&mdash;'}</p>
+                </div>
+                <button onclick="printCandidateFeedback('${esc(c.id)}')" class="glass-strong px-4 py-2 rounded-lg text-sm hover:bg-white/20 transition-all whitespace-nowrap" title="Print anonymized PDF">
+                    &#9113; Print PDF
+                </button>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-5 p-4 glass rounded-xl">
+            ${criteriaSummary}
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            ${juryBlocks}
+        </div>
+    </div>`;
+}
+
+// ==================== PRINT (CANDIDATE-FACING, ANONYMIZED) ====================
+
+function printCandidateFeedback(candidateId) {
+    const c = candidates.find(x => x.id === candidateId);
+    if (!c) return;
+
+    const juryEvals = getJuryEvalsForCandidate(candidateId);
+    // Only include jury members who actually wrote something or rated something
+    const contributing = juryEvals.filter(({ ev, score }) => {
+        if (score !== null) return true;
+        if (ev.general_comment && ev.general_comment.trim()) return true;
+        return CRITERIA.some(cr =>
+            ev[cr.id + '_rating'] ||
+            (ev[cr.id + '_comment'] && ev[cr.id + '_comment'].trim())
+        );
+    });
+
+    // Anonymize: stable order = order in juryMembers list, labelled "Jury Member N"
+    const combined = getCombinedScore(candidateId);
+
+    const criteriaTable = CRITERIA.map(cr => {
+        const avg = getCombinedCriterionScore(candidateId, cr.id);
+        const has = juryEvals.some(({ ev }) => ev[cr.id + '_rating']);
+        return `<tr>
+            <td class="cr-name">${esc(cr.name)}</td>
+            <td class="cr-desc">${esc(cr.desc)}</td>
+            <td class="cr-score">${has ? avg.toFixed(1) + ' / 5' : '&mdash;'}</td>
+        </tr>`;
+    }).join('');
+
+    const jurySections = contributing.map((entry, i) => {
+        const { ev, score } = entry;
+        const label = 'Jury Member ' + (i + 1);
+
+        const criteriaRows = CRITERIA.map(cr => {
+            const r = ev[cr.id + '_rating'];
+            const cm = ev[cr.id + '_comment'];
+            if (!r && !(cm && cm.trim())) return '';
+            return `<div class="cb">
+                <div class="cb-head">
+                    <span class="cb-name">${esc(cr.name)}</span>
+                    <span class="cb-score">${r ? r + ' / 5' : '&mdash;'}</span>
+                </div>
+                ${cm && cm.trim() ? `<p class="cb-text">${esc(cm)}</p>` : ''}
+            </div>`;
+        }).join('');
+
+        const general = ev.general_comment && ev.general_comment.trim();
+
+        return `
+        <section class="jury">
+            <div class="jury-head">
+                <h3>${esc(label)}</h3>
+                <span class="jury-overall">${score !== null ? 'Overall ' + score.toFixed(1) + ' / 5' : 'Partial evaluation'}</span>
+            </div>
+            ${criteriaRows}
+            ${general
+                ? `<div class="cb general">
+                    <div class="cb-head"><span class="cb-name">General Comment & Recommendation</span></div>
+                    <p class="cb-text">${esc(general)}</p>
+                </div>`
+                : ''}
+        </section>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Feedback &mdash; ${esc(c.name)}</title>
+<style>
+    @page { size: A4; margin: 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: #1a1a1a;
+        background: #fff;
+        margin: 0;
+        line-height: 1.5;
+        font-size: 11pt;
+    }
+    .header {
+        border-bottom: 2px solid #000;
+        padding-bottom: 14px;
+        margin-bottom: 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+    .header h1 { margin: 0; font-size: 20pt; font-weight: 700; letter-spacing: 0.3px; }
+    .header .sub { font-size: 9pt; color: #666; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px; }
+    .header .program { text-align: right; font-size: 9pt; color: #666; }
+    .candidate {
+        background: #f5f5f5;
+        padding: 16px 20px;
+        border-radius: 6px;
+        margin-bottom: 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .candidate .name { font-size: 16pt; font-weight: 700; margin: 0; }
+    .candidate .meta { font-size: 10pt; color: #555; margin-top: 3px; }
+    .candidate .score-box { text-align: right; }
+    .candidate .score-label { font-size: 8pt; text-transform: uppercase; letter-spacing: 1px; color: #666; }
+    .candidate .score-value { font-size: 22pt; font-weight: 700; color: #000; }
+    .candidate .score-meta { font-size: 8pt; color: #888; }
+
+    h2 {
+        font-size: 12pt;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: #555;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 6px;
+        margin: 24px 0 12px;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    table td { padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+    .cr-name { font-weight: 600; width: 32%; }
+    .cr-desc { color: #666; font-size: 9.5pt; }
+    .cr-score { font-weight: 700; text-align: right; white-space: nowrap; width: 14%; }
+
+    .jury {
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 14px 18px;
+        margin-bottom: 14px;
+        page-break-inside: avoid;
+    }
+    .jury-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+    }
+    .jury-head h3 { margin: 0; font-size: 12pt; font-weight: 700; }
+    .jury-overall { font-size: 10pt; color: #555; font-weight: 600; }
+
+    .cb { margin-top: 10px; }
+    .cb-head { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .cb-name { font-weight: 600; font-size: 10pt; }
+    .cb-score { font-size: 10pt; color: #555; }
+    .cb-text { margin: 0; font-size: 10pt; color: #333; white-space: pre-wrap; }
+    .cb.general { margin-top: 14px; padding-top: 10px; border-top: 1px dashed #ddd; }
+
+    .empty { color: #888; font-style: italic; padding: 20px; text-align: center; border: 1px dashed #ddd; border-radius: 6px; }
+
+    .footer {
+        margin-top: 30px;
+        padding-top: 12px;
+        border-top: 1px solid #ddd;
+        font-size: 8.5pt;
+        color: #888;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    @media print {
+        .no-print { display: none !important; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+    .toolbar {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        background: #1a1a2e;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 11pt;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    }
+    .toolbar button {
+        background: #fff;
+        color: #1a1a2e;
+        border: 0;
+        padding: 6px 14px;
+        margin-left: 8px;
+        border-radius: 5px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 10pt;
+    }
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+    <span>Save as PDF or print &mdash;</span>
+    <button onclick="window.print()">Print / Save PDF</button>
+    <button onclick="window.close()">Close</button>
+</div>
+
+<div class="header">
+    <div>
+        <h1>Candidate Feedback</h1>
+        <div class="sub">Mercedes-Benz Manufacturing Thailand</div>
+    </div>
+    <div class="program">
+        Talent Development Training 2026<br>
+        8&ndash;12 June 2026
+    </div>
+</div>
+
+<div class="candidate">
+    <div>
+        <p class="name">${esc(c.name)}</p>
+        <p class="meta">${esc(c.role)} &middot; ${esc(c.department)}${c.years ? ' &middot; ' + esc(String(c.years)) + ' years at MB' : ''}</p>
+    </div>
+    <div class="score-box">
+        <div class="score-label">Combined Score</div>
+        <div class="score-value">${combined !== null ? combined.toFixed(1) : '&mdash;'}</div>
+        <div class="score-meta">${combined !== null ? '/ 5.0 &middot; ' + contributing.length + ' jury member' + (contributing.length !== 1 ? 's' : '') : 'Not yet evaluated'}</div>
+    </div>
+</div>
+
+<h2>Criteria Averages</h2>
+<table>${criteriaTable}</table>
+
+<h2>Jury Feedback</h2>
+${contributing.length === 0
+    ? '<div class="empty">No jury feedback recorded yet.</div>'
+    : jurySections}
+
+<div class="footer">
+    <span>Confidential &mdash; for the candidate&rsquo;s personal development</span>
+    <span>Generated ${new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+</div>
+
+</body>
+</html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) {
+        alert('Please allow pop-ups for this site to generate the feedback PDF.');
+        return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+}
+
 // ==================== EXPORT ====================
 
 function exportResults() {
@@ -1389,15 +1868,104 @@ function exportResults() {
 
     // Prepend BOM so Excel detects UTF-8
     const csv = '﻿' + [toRow(headers), ...rows.map(toRow)].join('\r\n');
+    downloadCSV(csv, 'MB_Talent_Selection_2026.csv');
+}
+
+function downloadCSV(csv, filename) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'MB_Talent_Selection_2026.csv';
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportFeedbackCSV() {
+    if (candidates.length === 0) { alert('No candidates to export.'); return; }
+
+    const headers = [
+        'Department', 'Candidate', 'Role', 'Years', 'Email',
+        'Combined Avg', 'Jury Members Evaluated',
+        'Jury Member', 'Jury Role', 'Jury Overall',
+        'Criterion', 'Rating', 'Comment'
+    ];
+
+    // Sort: department asc, then candidate name asc
+    const sorted = candidates.slice().sort((a, b) => {
+        const d = (a.department || '').localeCompare(b.department || '');
+        return d !== 0 ? d : a.name.localeCompare(b.name);
+    });
+
+    const rows = [];
+    sorted.forEach(c => {
+        const combined = getCombinedScore(c.id);
+        const juryCount = getJuryEvalCount(c.id);
+        const juryEvals = getJuryEvalsForCandidate(c.id);
+
+        // Only include jury members with any content for this candidate
+        const contributing = juryEvals.filter(({ ev, score }) => {
+            if (score !== null) return true;
+            if (ev.general_comment && ev.general_comment.trim()) return true;
+            return CRITERIA.some(cr =>
+                ev[cr.id + '_rating'] ||
+                (ev[cr.id + '_comment'] && ev[cr.id + '_comment'].trim())
+            );
+        });
+
+        if (contributing.length === 0) {
+            // Still emit one row so the candidate isn't silently absent
+            rows.push([
+                c.department || '', c.name, c.role || '', c.years || '', c.email || '',
+                combined !== null ? combined.toFixed(2) : '',
+                juryCount + '/' + juryMembers.length,
+                '', '', '', '', '', '(no feedback yet)'
+            ]);
+            return;
+        }
+
+        contributing.forEach(({ jury, ev, score }) => {
+            CRITERIA.forEach(cr => {
+                const r = ev[cr.id + '_rating'];
+                const cm = ev[cr.id + '_comment'];
+                if (!r && !(cm && cm.trim())) return;
+                rows.push([
+                    c.department || '', c.name, c.role || '', c.years || '', c.email || '',
+                    combined !== null ? combined.toFixed(2) : '',
+                    juryCount + '/' + juryMembers.length,
+                    jury.name, jury.role || '',
+                    score !== null ? score.toFixed(2) : '',
+                    cr.name,
+                    r || '',
+                    cm || ''
+                ]);
+            });
+            const general = ev.general_comment && ev.general_comment.trim();
+            if (general) {
+                rows.push([
+                    c.department || '', c.name, c.role || '', c.years || '', c.email || '',
+                    combined !== null ? combined.toFixed(2) : '',
+                    juryCount + '/' + juryMembers.length,
+                    jury.name, jury.role || '',
+                    score !== null ? score.toFixed(2) : '',
+                    'General Comment & Recommendation',
+                    '',
+                    general
+                ]);
+            }
+        });
+    });
+
+    const csvCell = v => {
+        let s = v == null ? '' : String(v);
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+        return '"' + s.replace(/"/g, '""') + '"';
+    };
+    const toRow = arr => arr.map(csvCell).join(',');
+    const csv = '﻿' + [toRow(headers), ...rows.map(toRow)].join('\r\n');
+    downloadCSV(csv, 'MB_Talent_Feedback_2026.csv');
 }
 
 // ==================== INIT ====================
