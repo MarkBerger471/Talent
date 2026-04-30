@@ -1436,6 +1436,30 @@ function getJuryEvalsForCandidate(candidateId) {
     });
 }
 
+// Per-criterion: every juror who rated or commented on this criterion
+function getCriterionComments(candidateId, criterionId) {
+    const items = [];
+    juryMembers.forEach(j => {
+        const ev = (evaluations[j.id] && evaluations[j.id][candidateId]) || {};
+        const r = ev[criterionId + '_rating'];
+        const cm = ev[criterionId + '_comment'];
+        const trimmed = cm && cm.trim() ? cm.trim() : '';
+        if (r || trimmed) items.push({ jury: j, rating: r || null, comment: trimmed });
+    });
+    return items;
+}
+
+// General comments pooled across jurors (only those who wrote one)
+function getGeneralComments(candidateId) {
+    const items = [];
+    juryMembers.forEach(j => {
+        const ev = (evaluations[j.id] && evaluations[j.id][candidateId]) || {};
+        const cm = ev.general_comment;
+        if (cm && cm.trim()) items.push({ jury: j, comment: cm.trim() });
+    });
+    return items;
+}
+
 function hasAnyContent(juryEvals) {
     return juryEvals.some(({ ev }) => {
         if (calcOverall(ev) !== null) return true;
@@ -1507,49 +1531,59 @@ function renderFeedbackCard(c) {
         </div>`;
     }).join('');
 
-    const juryBlocks = juryEvals.map(({ jury, ev, score }) => {
-        const rated = score !== null;
-        const general = ev.general_comment && ev.general_comment.trim();
+    // One block per criterion, pooling comments from all jurors
+    const criterionBlocks = CRITERIA.map(cr => {
+        const items = getCriterionComments(c.id, cr.id);
+        const withComments = items.filter(x => x.comment);
+        const avg = getCombinedCriterionScore(c.id, cr.id);
+        const hasRating = items.some(x => x.rating);
 
-        const perCriterion = CRITERIA.map(cr => {
-            const r = ev[cr.id + '_rating'];
-            const cm = ev[cr.id + '_comment'];
-            if (!r && !(cm && cm.trim())) return '';
-            return `<div class="mt-3">
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-sm font-medium text-white/70">${esc(cr.name)}</span>
-                    <span class="text-sm text-white/50">${r ? r + '/5' : '&mdash;'}</span>
+        const commentList = withComments.length === 0
+            ? `<p class="text-sm text-white/30 italic mt-3">${items.length === 0 ? 'No ratings or comments yet' : 'No written comments (ratings only)'}</p>`
+            : withComments.map(x => `
+                <div class="mt-3">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium text-white/70">${esc(x.jury.name)}${x.jury.role ? ` <span class="text-white/30 font-normal">— ${esc(x.jury.role)}</span>` : ''}</span>
+                        <span class="text-sm text-white/50">${x.rating ? x.rating + '/5' : '&mdash;'}</span>
+                    </div>
+                    <p class="text-sm text-white/60 whitespace-pre-wrap leading-relaxed">${esc(x.comment)}</p>
                 </div>
-                ${cm && cm.trim()
-                    ? `<p class="text-sm text-white/60 whitespace-pre-wrap leading-relaxed">${esc(cm)}</p>`
-                    : '<p class="text-sm text-white/25 italic">No comment</p>'}
-            </div>`;
-        }).join('');
-
-        const hasAny = rated || general || CRITERIA.some(cr => ev[cr.id + '_rating'] || (ev[cr.id + '_comment'] && ev[cr.id + '_comment'].trim()));
+            `).join('');
 
         return `
         <div class="glass rounded-xl p-5">
-            <div class="flex items-center justify-between mb-2 pb-3 border-b border-white/10">
-                <div>
-                    <p class="font-semibold text-white/90">${esc(jury.name)}</p>
-                    ${jury.role ? `<p class="text-xs text-white/40">${esc(jury.role)}</p>` : ''}
+            <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                <div class="pr-3">
+                    <p class="font-semibold text-white/90">${esc(cr.name)}</p>
+                    <p class="text-xs text-white/40 mt-0.5">${withComments.length} comment${withComments.length !== 1 ? 's' : ''} &middot; ${items.length} of ${juryMembers.length} jury member${juryMembers.length !== 1 ? 's' : ''} rated</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-xs text-white/30 uppercase tracking-wider">Overall</p>
-                    <p class="text-2xl font-bold ${rated ? 'text-blue-300' : 'text-white/30'}">${rated ? score.toFixed(1) : '&mdash;'}</p>
+                    <p class="text-xs text-white/30 uppercase tracking-wider">Avg</p>
+                    <p class="text-2xl font-bold ${hasRating ? 'text-blue-300' : 'text-white/30'}">${hasRating ? avg.toFixed(1) : '&mdash;'}</p>
                 </div>
             </div>
-            ${!hasAny ? '<p class="text-sm text-white/30 italic mt-2">No evaluation yet</p>' : ''}
-            ${perCriterion}
-            ${general
-                ? `<div class="mt-4 pt-3 border-t border-white/5">
-                    <p class="text-xs text-white/40 uppercase tracking-wider mb-2">General Comment & Recommendation</p>
-                    <p class="text-sm text-white/75 whitespace-pre-wrap leading-relaxed">${esc(general)}</p>
-                </div>`
-                : ''}
+            ${commentList}
         </div>`;
     }).join('');
+
+    const generalItems = getGeneralComments(c.id);
+    const generalBlock = `
+        <div class="glass rounded-xl p-5 lg:col-span-2">
+            <div class="pb-3 border-b border-white/10">
+                <p class="font-semibold text-white/90">General Comment & Recommendation</p>
+                <p class="text-xs text-white/40 mt-0.5">${generalItems.length} comment${generalItems.length !== 1 ? 's' : ''}</p>
+            </div>
+            ${generalItems.length === 0
+                ? '<p class="text-sm text-white/30 italic mt-3">No general comments yet</p>'
+                : generalItems.map(x => `
+                    <div class="mt-3">
+                        <span class="text-sm font-medium text-white/70 block mb-1">${esc(x.jury.name)}${x.jury.role ? ` <span class="text-white/30 font-normal">— ${esc(x.jury.role)}</span>` : ''}</span>
+                        <p class="text-sm text-white/75 whitespace-pre-wrap leading-relaxed">${esc(x.comment)}</p>
+                    </div>
+                `).join('')}
+        </div>`;
+
+    const juryBlocks = criterionBlocks + generalBlock;
 
     return `
     <div class="glass-card rounded-2xl p-6 mb-4">
@@ -1612,40 +1646,57 @@ function printCandidateFeedback(candidateId) {
         </tr>`;
     }).join('');
 
-    const jurySections = contributing.map((entry, i) => {
-        const { ev, score } = entry;
-        const label = 'Jury Member ' + (i + 1);
+    // Stable anonymous label per contributing juror — same label used across all criteria
+    const juryLabel = new Map();
+    contributing.forEach((entry, i) => juryLabel.set(entry.jury.id, 'Jury Member ' + (i + 1)));
 
-        const criteriaRows = CRITERIA.map(cr => {
-            const r = ev[cr.id + '_rating'];
-            const cm = ev[cr.id + '_comment'];
-            if (!r && !(cm && cm.trim())) return '';
-            return `<div class="cb">
-                <div class="cb-head">
-                    <span class="cb-name">${esc(cr.name)}</span>
-                    <span class="cb-score">${r ? r + ' / 5' : '&mdash;'}</span>
+    // One section per criterion, pooling all contributing jurors' comments
+    const criterionSections = CRITERIA.map(cr => {
+        const items = getCriterionComments(candidateId, cr.id);
+        const withComments = items.filter(x => x.comment);
+        const avg = getCombinedCriterionScore(candidateId, cr.id);
+        const hasRating = items.some(x => x.rating);
+
+        const body = withComments.length === 0
+            ? `<p class="cb-text" style="color:#888;font-style:italic;">${items.length === 0 ? 'No ratings or comments.' : 'Ratings only — no written comments.'}</p>`
+            : withComments.map(x => `
+                <div class="cb">
+                    <div class="cb-head">
+                        <span class="cb-name">${esc(juryLabel.get(x.jury.id) || '')}</span>
+                        <span class="cb-score">${x.rating ? x.rating + ' / 5' : '&mdash;'}</span>
+                    </div>
+                    <p class="cb-text">${esc(x.comment)}</p>
                 </div>
-                ${cm && cm.trim() ? `<p class="cb-text">${esc(cm)}</p>` : ''}
-            </div>`;
-        }).join('');
-
-        const general = ev.general_comment && ev.general_comment.trim();
+            `).join('');
 
         return `
         <section class="jury">
             <div class="jury-head">
-                <h3>${esc(label)}</h3>
-                <span class="jury-overall">${score !== null ? 'Overall ' + score.toFixed(1) + ' / 5' : 'Partial evaluation'}</span>
+                <h3>${esc(cr.name)}</h3>
+                <span class="jury-overall">${hasRating ? 'Avg ' + avg.toFixed(1) + ' / 5' : '&mdash;'} &middot; ${withComments.length} comment${withComments.length !== 1 ? 's' : ''}</span>
             </div>
-            ${criteriaRows}
-            ${general
-                ? `<div class="cb general">
-                    <div class="cb-head"><span class="cb-name">General Comment & Recommendation</span></div>
-                    <p class="cb-text">${esc(general)}</p>
-                </div>`
-                : ''}
+            ${body}
         </section>`;
     }).join('');
+
+    const generalItems = getGeneralComments(candidateId);
+    const generalSection = `
+        <section class="jury">
+            <div class="jury-head">
+                <h3>General Comment & Recommendation</h3>
+                <span class="jury-overall">${generalItems.length} comment${generalItems.length !== 1 ? 's' : ''}</span>
+            </div>
+            ${generalItems.length === 0
+                ? '<p class="cb-text" style="color:#888;font-style:italic;">No general comments.</p>'
+                : generalItems.map(x => `
+                    <div class="cb">
+                        <div class="cb-head"><span class="cb-name">${esc(juryLabel.get(x.jury.id) || '')}</span></div>
+                        <p class="cb-text">${esc(x.comment)}</p>
+                    </div>
+                `).join('')}
+        </section>`;
+
+    const jurySections = criterionSections + generalSection;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -1805,7 +1856,7 @@ function printCandidateFeedback(candidateId) {
 <h2>Criteria Averages</h2>
 <table>${criteriaTable}</table>
 
-<h2>Jury Feedback</h2>
+<h2>Comments by Category</h2>
 ${contributing.length === 0
     ? '<div class="empty">No jury feedback recorded yet.</div>'
     : jurySections}
@@ -1886,11 +1937,12 @@ function downloadCSV(csv, filename) {
 function exportFeedbackCSV() {
     if (candidates.length === 0) { alert('No candidates to export.'); return; }
 
+    // One row per (candidate × criterion), with all jury comments pooled into
+    // a single multi-line cell. Rated count and avg rating give the numeric view.
     const headers = [
         'Department', 'Candidate', 'Role', 'Years', 'Email',
         'Combined Avg', 'Jury Members Evaluated',
-        'Jury Member', 'Jury Role', 'Jury Overall',
-        'Criterion', 'Rating', 'Comment'
+        'Criterion', 'Avg Rating', 'Rated By', 'Comment Count', 'Combined Comments'
     ];
 
     // Sort: department asc, then candidate name asc
@@ -1903,59 +1955,44 @@ function exportFeedbackCSV() {
     sorted.forEach(c => {
         const combined = getCombinedScore(c.id);
         const juryCount = getJuryEvalCount(c.id);
-        const juryEvals = getJuryEvalsForCandidate(c.id);
+        const baseCols = [
+            c.department || '', c.name, c.role || '', c.years || '', c.email || '',
+            combined !== null ? combined.toFixed(2) : '',
+            juryCount + '/' + juryMembers.length,
+        ];
 
-        // Only include jury members with any content for this candidate
-        const contributing = juryEvals.filter(({ ev, score }) => {
-            if (score !== null) return true;
-            if (ev.general_comment && ev.general_comment.trim()) return true;
-            return CRITERIA.some(cr =>
-                ev[cr.id + '_rating'] ||
-                (ev[cr.id + '_comment'] && ev[cr.id + '_comment'].trim())
-            );
-        });
+        CRITERIA.forEach(cr => {
+            const items = getCriterionComments(c.id, cr.id);
+            const rated = items.filter(x => x.rating);
+            const withComments = items.filter(x => x.comment);
+            const avg = getCombinedCriterionScore(c.id, cr.id);
 
-        if (contributing.length === 0) {
-            // Still emit one row so the candidate isn't silently absent
+            const combinedText = withComments.map(x =>
+                `${x.jury.name}${x.jury.role ? ' (' + x.jury.role + ')' : ''}${x.rating ? ' [' + x.rating + '/5]' : ''}: ${x.comment}`
+            ).join('\n\n');
+
             rows.push([
-                c.department || '', c.name, c.role || '', c.years || '', c.email || '',
-                combined !== null ? combined.toFixed(2) : '',
-                juryCount + '/' + juryMembers.length,
-                '', '', '', '', '', '(no feedback yet)'
+                ...baseCols,
+                cr.name,
+                rated.length > 0 ? avg.toFixed(2) : '',
+                rated.length + '/' + juryMembers.length,
+                withComments.length,
+                combinedText
             ]);
-            return;
-        }
-
-        contributing.forEach(({ jury, ev, score }) => {
-            CRITERIA.forEach(cr => {
-                const r = ev[cr.id + '_rating'];
-                const cm = ev[cr.id + '_comment'];
-                if (!r && !(cm && cm.trim())) return;
-                rows.push([
-                    c.department || '', c.name, c.role || '', c.years || '', c.email || '',
-                    combined !== null ? combined.toFixed(2) : '',
-                    juryCount + '/' + juryMembers.length,
-                    jury.name, jury.role || '',
-                    score !== null ? score.toFixed(2) : '',
-                    cr.name,
-                    r || '',
-                    cm || ''
-                ]);
-            });
-            const general = ev.general_comment && ev.general_comment.trim();
-            if (general) {
-                rows.push([
-                    c.department || '', c.name, c.role || '', c.years || '', c.email || '',
-                    combined !== null ? combined.toFixed(2) : '',
-                    juryCount + '/' + juryMembers.length,
-                    jury.name, jury.role || '',
-                    score !== null ? score.toFixed(2) : '',
-                    'General Comment & Recommendation',
-                    '',
-                    general
-                ]);
-            }
         });
+
+        // General comment row
+        const generalItems = getGeneralComments(c.id);
+        const combinedGeneral = generalItems.map(x =>
+            `${x.jury.name}${x.jury.role ? ' (' + x.jury.role + ')' : ''}: ${x.comment}`
+        ).join('\n\n');
+        rows.push([
+            ...baseCols,
+            'General Comment & Recommendation',
+            '', '',
+            generalItems.length,
+            combinedGeneral
+        ]);
     });
 
     const csvCell = v => {
